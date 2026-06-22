@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="Game.Framework/Game.Framework.csproj" Id="d1159301-26f5-4a78-ae8b-708d3a475b69" />
+  <Project Path="SilkNetGame/SilkNetGame.csproj" />
+</Solution>
