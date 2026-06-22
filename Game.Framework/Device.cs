@@ -83,10 +83,8 @@ public sealed class Device {
 	) {
 		return new Texture(
 			_gl,
-			ImageLoader.Load(
-				textureFile,
-				premultiplyAlpha
-			)
+			textureFile,
+			premultiplyAlpha
 		);
 	}
 
@@ -98,6 +96,17 @@ public sealed class Device {
 			_gl,
 			width,
 			height
+		);
+	}
+
+	public TtfFont LoadFont(
+		string fontFile,
+		float fontSize
+	) {
+		return new TtfFont(
+			_gl,
+			fontFile,
+			fontSize
 		);
 	}
 

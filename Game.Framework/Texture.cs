@@ -13,9 +13,16 @@ public sealed class Texture : IDisposable {
 
 	internal Texture(
 		GL gl,
-		ImageResult image
+		string textureFile,
+		bool premultiplyAlpha = true
 	) {
 		_gl = gl;
+
+		ImageResult image = ImageLoader.Load(
+			textureFile,
+			premultiplyAlpha
+		);
+
 		_width = (uint)image.Width;
 		_height = (uint)image.Height;
 
