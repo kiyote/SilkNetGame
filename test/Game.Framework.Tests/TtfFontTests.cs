@@ -1,4 +1,5 @@
-﻿using Silk.NET.OpenGL;
+﻿using Game.Framework.Fonts;
+using Silk.NET.OpenGL;
 using Silk.NET.Windowing;
 
 namespace Game.Framework.Tests;

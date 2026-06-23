@@ -6,7 +6,7 @@ using Silk.NET.Windowing;
 
 namespace Game.Framework;
 
-public sealed class Display : RenderTarget {
+internal sealed class Display : IDisplay {
 
 	private readonly IWindow _window;
 	private readonly GL _gl;
@@ -14,15 +14,7 @@ public sealed class Display : RenderTarget {
 	private uint _height;
 	private Matrix4x4 _projection;
 
-	// *******************************************************
-	// These are for handling disabling updating when resizing
-	private bool _isResizing = false;
-	private CancellationTokenSource? _debounceCts;
-	private Vector2D<int> _targetSize;
-	private bool _lastVSync;
-	// *******************************************************
-
-	internal Display(
+	public Display(
 		IWindow window,
 		GL gl,
 		int width,
@@ -35,55 +27,33 @@ public sealed class Display : RenderTarget {
 		SetSize( (uint)width, (uint)height );
 	}
 
-	public bool IsResizing => _isResizing;
-
-	public void Clear(
+	void IRenderTarget.Clear(
 		Color colour
 	) {
-		Bind();
+		DoBind();
 		_gl.ClearColor( colour );
 		_gl.Clear( ClearBufferMask.ColorBufferBit );
 	}
 
-	internal override void Bind() {
+	void IRenderTarget.Bind() {
+		DoBind();
+	}
+
+	Matrix4x4 IRenderTarget.Projection => _projection;
+
+	uint IRenderTarget.Width => _width;
+
+	uint IRenderTarget.Height => _height;
+
+	private void DoBind() {
 		_gl.BindFramebuffer( FramebufferTarget.Framebuffer, 0 );
 		_gl.Viewport( 0, 0, _width, _height );
 	}
 
-	internal override Matrix4x4 Projection => _projection;
-
-	internal override uint Width => _width;
-
-	internal override uint Height => _height;
-
 	private void FramebufferResize(
 		Vector2D<int> size
 	) {
-		_targetSize = size;
-
-		if( !_isResizing ) {
-			_isResizing = true;
-			_lastVSync = _window.VSync;
-			_window.VSync = false;
-		}
-
-		_debounceCts?.Cancel();
-		_debounceCts = new CancellationTokenSource();
-
-		Task.Delay( 150, _debounceCts.Token ).ContinueWith( t => {
-			if( t.IsCompletedSuccessfully ) {
-				EndResize();
-			}
-		} );
-	}
-
-	private void EndResize() {
-		_window.VSync = _lastVSync;
-		_isResizing = false;
-		_debounceCts = null;
-		GC.Collect(); // Now is an opportune time since the user will be not expecting perfection after a resize
-
-		SetSize( (uint)_targetSize.X, (uint)_targetSize.Y );
+		SetSize( (uint)size.X, (uint)size.Y );
 	}
 
 	private void SetSize(
@@ -101,5 +71,8 @@ public sealed class Display : RenderTarget {
 			zNearPlane: -1.0f,
 			zFarPlane: 1.0f
 		);
+	}
+
+	void IDisposable.Dispose() {
 	}
 }

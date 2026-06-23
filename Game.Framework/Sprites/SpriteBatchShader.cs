@@ -1,7 +1,7 @@
 ﻿using System.Numerics;
 using Silk.NET.OpenGL;
 
-namespace Game.Framework;
+namespace Game.Framework.Sprites;
 
 internal sealed class SpriteBatchShader: Shader {
 
@@ -58,7 +58,7 @@ internal sealed class SpriteBatchShader: Shader {
 	}
 
 	public void Bind(
-		RenderTarget renderTarget,
+		IRenderTarget renderTarget,
 		int textureUnit
 	) {
 		renderTarget.Bind();

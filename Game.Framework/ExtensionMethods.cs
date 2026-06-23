@@ -16,4 +16,10 @@ public static class ExtensionMethods {
 	extension(Color) {
 		public static Color TransparentBlack => _transparentBlack;
 	}
+
+	extension( IDevice ) {
+		public static IDevice Create( string title, int width, int height, bool vsync, WindowMode windowMode ) {
+			return new Device( title, width, height, vsync, windowMode );
+		}
+	}
 }

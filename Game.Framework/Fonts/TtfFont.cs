@@ -1,13 +1,14 @@
 ﻿using System.Numerics;
+using System.Runtime.CompilerServices;
+using Game.Framework.Textures;
 using HarfBuzzSharp;
 using Silk.NET.OpenGL;
 using StbTrueTypeSharp;
-
 using Buffer = HarfBuzzSharp.Buffer;
 
-namespace Game.Framework;
+namespace Game.Framework.Fonts;
 
-public sealed unsafe class TtfFont : IDisposable {
+internal sealed unsafe class TtfFont : IFont {
 	private readonly GL _gl;
 	private byte[]? _fontData;
 	private StbTrueType.stbtt_fontinfo? _fontInfo;
@@ -16,9 +17,6 @@ public sealed unsafe class TtfFont : IDisposable {
 	private readonly Font _font;
 	private readonly float _scale;
 	private bool _isDisposed;
-
-	private static readonly Vector4 White = new Vector4( 1.0f, 1.0f, 1.0f, 1.0f );
-	private static readonly Vector4 Black = new Vector4( 0.0f, 0.0f, 0.0f, 1.0f );
 
 	private readonly Dictionary<uint, GlyphMetrics> _glyphCache = [];
 
@@ -53,17 +51,18 @@ public sealed unsafe class TtfFont : IDisposable {
 		_font.SetScale( (int)( fontSize * 64 ), (int)( fontSize * 64 ) );
 	}
 
-	public void RenderTo(
-		Framebuffer framebuffer,
+	public void DrawText(
+		ITexture texture,
 		string text,
 		int x,
-		int y
+		int y,
+		uint colour = 0xFFFFFFFF
 	) {
 		ObjectDisposedException.ThrowIf( _isDisposed, this );
 
-		byte[] textureData = GenerateTextureData( text, White, out int width, out int height );
+		byte[] textureData = GenerateTextureData( text, colour, out int width, out int height );
 
-		_gl.BindTexture( TextureTarget.Texture2D, framebuffer.Texture.Id );
+		_gl.BindTexture( TextureTarget.Texture2D, texture.Id );
 
 		fixed( byte* ptr = textureData ) {
 			_gl.TexSubImage2D(
@@ -80,17 +79,20 @@ public sealed unsafe class TtfFont : IDisposable {
 		}
 	}
 
-	public void OutlineRenderTo(
-		Framebuffer framebuffer,
+	public void DrawOutlinedText(
+		ITexture texture,
 		string text,
 		int x,
-		int y
+		int y,
+		uint textColour = 0xFFFFFFFF,
+		uint outlineColour = 0x000000FF,
+		int outlineThickness = 1
 	) {
 		ObjectDisposedException.ThrowIf( _isDisposed, this );
 
-		byte[] textureData = GenerateTextureData( text, White, Black, 1, out int width, out int height );
+		byte[] textureData = GenerateTextureData( text, textColour, outlineColour, outlineThickness, out int width, out int height );
 
-		_gl.BindTexture( TextureTarget.Texture2D, framebuffer.Texture.Id );
+		_gl.BindTexture( TextureTarget.Texture2D, texture.Id );
 
 		fixed( byte* ptr = textureData ) {
 			_gl.TexSubImage2D(
@@ -109,8 +111,9 @@ public sealed unsafe class TtfFont : IDisposable {
 
 	public void MeasureText(
 		string text,
-		out float width,
-		out float height
+		int outlineWidth,
+		out int width,
+		out int height
 	) {
 		// 1. Process text through HarfBuzz to get glyph IDs and layout tracking metrics
 		using var buffer = new Buffer();
@@ -163,27 +166,23 @@ public sealed unsafe class TtfFont : IDisposable {
 
 		// Return empty size if string is empty or completely whitespace
 		if( !hasVisibleGlyphs ) {
-			width = 0.0f;
-			height = 0.0f;
+			width = 0;
+			height = 0;
 			return;
 		}
 
 		// 3. Compute final layout bounds dimensions
-		width = maxX - minX;
-		height = maxY - minY;
+		width = (int)Math.Ceiling( maxX - minX + ( outlineWidth * 2 ) );
+		height = (int)Math.Ceiling( maxY - minY + ( outlineWidth * 2 ) );
 	}
 
-	public byte[] GenerateTextureData(
+	private byte[] GenerateTextureData(
 		string text,
-		Vector4 textColor,
+		uint colour,
 		out int outputWidth,
 		out int outputHeight
 	) {
-		// Extract base colors and global alpha multiplier
-		float baseR = Math.Clamp( textColor.X, 0f, 1f );
-		float baseG = Math.Clamp( textColor.Y, 0f, 1f );
-		float baseB = Math.Clamp( textColor.Z, 0f, 1f );
-		float textAlphaFactor = Math.Clamp( textColor.W, 0f, 1f );
+		(float baseR, float baseG, float baseB, float textAlphaFactor) = DecomposeRgba( colour );
 
 		// 1. Process text through HarfBuzz (identical to previous versions)
 		using var buffer = new Buffer();
@@ -281,29 +280,21 @@ public sealed unsafe class TtfFont : IDisposable {
 		return compositePixels;
 	}
 
-	public byte[] GenerateTextureData(
+	private byte[] GenerateTextureData(
 		string text,
-		Vector4 textColor,
-		Vector4 outlineColor,
+		uint textColour,
+		uint outlineColour,
 		int outlineThickness,
 		out int outputWidth,
-		out int outputHeight ) {
-		// 1. Normalize colors into 0.0 - 1.0 floats for raw blending calculations
-		float textR = Math.Clamp( textColor.X, 0f, 1f );
-		float textG = Math.Clamp( textColor.Y, 0f, 1f );
-		float textB = Math.Clamp( textColor.Z, 0f, 1f );
-		float textA = Math.Clamp( textColor.W, 0f, 1f );
+		out int outputHeight
+	) {
 
-		float outR = Math.Clamp( outlineColor.X, 0f, 1f );
-		float outG = Math.Clamp( outlineColor.Y, 0f, 1f );
-		float outB = Math.Clamp( outlineColor.Z, 0f, 1f );
-		float outA = Math.Clamp( outlineColor.W, 0f, 1f );
+		(float textR, float textG, float textB, float textA) = DecomposeRgba( textColour );
+		(float outR, float outG, float outB, float outA) = DecomposeRgba( outlineColour );
 
-		// Enforce valid outline boundaries
 		outlineThickness = Math.Max( 0, outlineThickness );
 
-		// 2. Process text layout via HarfBuzz
-		using var buffer = new HarfBuzzSharp.Buffer();
+		using var buffer = new Buffer();
 		buffer.AddUtf8( text );
 		buffer.GuessSegmentProperties();
 		_font.Shape( buffer );
@@ -405,6 +396,11 @@ public sealed unsafe class TtfFont : IDisposable {
 					}
 				}
 			}
+		}
+		foreach( (GlyphMetrics glyph, Vector2 position) in renderedGlyphs ) {
+			// Align coordinates relative to our zero-indexed canvas surface
+			int startX = (int)Math.Round( position.X - minX );
+			int startY = (int)Math.Round( position.Y - minY );
 
 			// ====================================================================
 			// LAYER B: Overlay the primary font content cleanly on top
@@ -499,6 +495,17 @@ public sealed unsafe class TtfFont : IDisposable {
 			_fontData = null;
 		}
 		GC.SuppressFinalize( this );
+	}
+
+	[MethodImpl( MethodImplOptions.AggressiveInlining )]
+	private static (float R, float G, float B, float A) DecomposeRgba( uint rgba ) {
+		const float ToFloat = 1.0f / 255.0f;
+		return (
+			( ( rgba >> 24 ) & 0xFF ) * ToFloat,
+			( ( rgba >> 16 ) & 0xFF ) * ToFloat,
+			( ( rgba >> 8 ) & 0xFF ) * ToFloat,
+			( rgba & 0xFF ) * ToFloat
+		);
 	}
 
 	~TtfFont() {

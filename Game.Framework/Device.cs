@@ -1,4 +1,7 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using Game.Framework.Fonts;
+using Game.Framework.Sprites;
+using Game.Framework.Textures;
+using Microsoft.Extensions.DependencyInjection;
 using Silk.NET.Input;
 using Silk.NET.Maths;
 using Silk.NET.OpenGL;
@@ -8,7 +11,7 @@ using Monitor = Silk.NET.Windowing.Monitor;
 
 namespace Game.Framework;
 
-public sealed class Device {
+internal sealed class Device : IDevice {
 
 	private readonly IWindow _window;
 	private readonly WindowMode _windowMode;
@@ -62,7 +65,7 @@ public sealed class Device {
 		_window.Closing += Unload;
 	}
 
-	public Device ConfigureServices(
+	IDevice IDevice.ConfigureServices(
 		Action<IServiceCollection> configure
 	) {
 		_configureServices = configure;
@@ -70,25 +73,25 @@ public sealed class Device {
 		return this;
 	}
 
-	public void Run() {
+	void IDevice.Run() {
 		_window.Run();
 		_input.Dispose();
 		_window.Dispose();
 		_gl.Dispose();
 	}
 
-	public Texture LoadTexture(
+	ITexture IDevice.LoadTexture(
 		string textureFile,
-		bool premultiplyAlpha = true
+		bool premultiplyAlpha
 	) {
-		return new Texture(
+		return new Textures.Texture(
 			_gl,
 			textureFile,
 			premultiplyAlpha
 		);
 	}
 
-	public Framebuffer CreateRenderTarget(
+	IFramebuffer IDevice.CreateFramebuffer(
 		uint width,
 		uint height
 	) {
@@ -99,7 +102,18 @@ public sealed class Device {
 		);
 	}
 
-	public TtfFont LoadFont(
+	ISpriteAtlas IDevice.CreateSpriteAtlas(
+		ITexture texture,
+		ISpriteBatch spriteBatch
+	) {
+		return new SpriteAtlas(
+			_gl,
+			texture,
+			spriteBatch
+		);
+	}
+
+	IFont IDevice.LoadTtfFont(
 		string fontFile,
 		float fontSize
 	) {
@@ -110,7 +124,7 @@ public sealed class Device {
 		);
 	}
 
-	public void Exit() {
+	void IDevice.Exit() {
 		_window.Close();
 	}
 
@@ -131,9 +145,10 @@ public sealed class Device {
 		IServiceCollection serviceCollection = new ServiceCollection();
 		serviceCollection.AddSingleton( _gl );
 		serviceCollection.AddSingleton( _input );
-		serviceCollection.AddSingleton( display );
-		serviceCollection.AddSingleton( this );
-		serviceCollection.AddSingleton<SpriteBatch, SpriteBatchPMO>();
+		serviceCollection.AddSingleton( _window );
+		serviceCollection.AddSingleton<IDisplay>( display );
+		serviceCollection.AddSingleton<IDevice>( this );
+		serviceCollection.AddSingleton<ISpriteBatch, SpriteBatchPMO>();
 		serviceCollection.AddSingleton<Keyboard>();
 		_configureServices?.Invoke( serviceCollection );
 		_services = serviceCollection.BuildServiceProvider();
@@ -148,7 +163,7 @@ public sealed class Device {
 
 	private void Unload() {
 		_game.Dispose();
-		_services?.GetRequiredService<SpriteBatch>().Dispose();
+		_services?.GetRequiredService<ISpriteBatch>().Dispose();
 		_services?.GetRequiredService<Keyboard>().Dispose();
 	}
 }

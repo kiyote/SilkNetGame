@@ -1,9 +1,10 @@
 ﻿using System.Runtime.CompilerServices;
+using Game.Framework.Textures;
 using Silk.NET.OpenGL;
 
-namespace Game.Framework;
+namespace Game.Framework.Sprites;
 
-internal unsafe sealed class SpriteBatchPMO : SpriteBatch {
+internal unsafe sealed class SpriteBatchPMO : ISpriteBatch {
 	private const int TEXTURE_UNIT_0 = 0;
 
 	private const int POSITION_OFFSET = 0;
@@ -95,9 +96,9 @@ internal unsafe sealed class SpriteBatchPMO : SpriteBatch {
 		_gl.BindVertexArray( 0 );
 	}
 
-	public override void Begin(
-		RenderTarget renderTarget,
-		Texture texture
+	void ISpriteBatch.Begin(
+		IRenderTarget renderTarget,
+		ITexture texture
 	) {
 		if( _isBatching ) {
 			return;
@@ -115,7 +116,7 @@ internal unsafe sealed class SpriteBatchPMO : SpriteBatch {
 		_gl.BlendFunc( BlendingFactor.One, BlendingFactor.OneMinusSrcAlpha );
 	}
 
-	public override void Sprite(
+	void ISpriteBatch.Draw(
 		float x,
 		float y,
 		float width,
@@ -173,7 +174,7 @@ internal unsafe sealed class SpriteBatchPMO : SpriteBatch {
 		}
 	}
 
-	public override void End() {
+	void ISpriteBatch.End() {
 		if( !_isBatching ) {
 			throw new InvalidOperationException( "Cannot call End without a matching call to Begin." );
 		}
@@ -238,7 +239,7 @@ internal unsafe sealed class SpriteBatchPMO : SpriteBatch {
 		}
 	}
 
-	public override void Dispose() {
+	void IDisposable.Dispose() {
 		if( _isDisposed ) {
 			return;
 		}

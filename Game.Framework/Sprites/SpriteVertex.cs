@@ -1,6 +1,6 @@
 ﻿using System.Runtime.InteropServices;
 
-namespace Game.Framework;
+namespace Game.Framework.Sprites;
 
 [StructLayout( LayoutKind.Sequential, Pack = 4 )]
 internal struct SpriteVertex {

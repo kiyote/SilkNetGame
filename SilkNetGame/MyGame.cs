@@ -1,4 +1,7 @@
 ﻿using Game.Framework;
+using Game.Framework.Fonts;
+using Game.Framework.Sprites;
+using Game.Framework.Textures;
 using Silk.NET.Input;
 using System.Drawing;
 
@@ -6,19 +9,17 @@ namespace SilkNetGame;
 
 public sealed class MyGame : GameBase, IKeyHandler {
 
-	private readonly Device _device;
-	private readonly Display _display;
-	private readonly SpriteBatch _spriteBatch;
+	private readonly IDevice _device;
+	private readonly IDisplay _display;
+	private readonly ISpriteBatch _spriteBatch;
 	private readonly Keyboard _keyboard;
-	private readonly Texture _terrain;
-	private readonly Sprite _sprite;
-	private readonly TtfFont _font;
-	private readonly Framebuffer _framebuffer;
+	private readonly IFont _font;
+	private readonly ISpriteAtlas _atlas;
 
 	public MyGame(
-		Device device,
-		Display display,
-		SpriteBatch spriteBatch,
+		IDevice device,
+		IDisplay display,
+		ISpriteBatch spriteBatch,
 		Keyboard keyboard
 	) {
 		_device = device;
@@ -27,14 +28,19 @@ public sealed class MyGame : GameBase, IKeyHandler {
 		_keyboard = keyboard;
 
 		_keyboard.AddHandler( this );
-		_terrain = _device.LoadTexture( "terrain.png" );
+		ITexture terrain = _device.LoadTexture( "terrain.png" );
 
-		_sprite = new Sprite( _terrain, 384, 256, 96, 96 );
+		_font = device.LoadTtfFont( "Roboto-Regular.ttf", 24 );
 
-		_framebuffer = device.CreateRenderTarget( 512, 128 );
-		_framebuffer.Clear( Color.TransparentBlack );
-		_font = device.LoadFont( "Roboto-Regular.ttf", 24 );
-		_font.OutlineRenderTo( _framebuffer, "Hello world.", 10, 10 );
+		_atlas = device.CreateSpriteAtlas(
+			device.CreateFramebuffer( 1024, 1024 ),
+			spriteBatch
+		);
+
+		_atlas.Add( "tall_grass", terrain, 384, 256, 96, 96 );
+		_atlas.Add( "hello", _font, "Hello world.", 0xFFFFFFFF, 0x000000FF, 5 );
+
+		terrain.Dispose();
 	}
 
 	public bool KeyDown(
@@ -56,21 +62,15 @@ public sealed class MyGame : GameBase, IKeyHandler {
 	public override void Render(
 		double deltaTime
 	) {
-		if( _display.IsResizing ) {
-			return;
-		}
-
 		_display.Clear( Color.CornflowerBlue );
-		_spriteBatch.Begin( _display, _terrain );
-		_spriteBatch.Sprite( 100, 100, _sprite, 0xFFFFFFFF );
-		_spriteBatch.Sprite( 200, 100, 96 * 2, 96 * 2, _sprite, 0xFFFFFFFF );
-		_spriteBatch.Sprite( 400, 100, 96 * 3, 96 * 3, _sprite, 0xFFFFFFFF );
-		_spriteBatch.Sprite( 700, 100, 96 * 4, 96 * 4, _sprite, 0xFFFFFFFF );
-		_spriteBatch.End();
 
-		_spriteBatch.Begin( _display, _framebuffer.Texture );
-		_spriteBatch.Sprite( 0, 0, 512, 128, 0, 0, 1, 1, 0xFFFFFFFF );
-		_spriteBatch.End();
+		_atlas.Begin( _display );
+		_atlas.Draw( "tall_grass", 100, 100 );
+		_atlas.Draw( "tall_grass", 200, 100, 96 * 2, 96 * 2 );
+		_atlas.Draw( "tall_grass", 400, 100, 96 * 3, 96 * 3 );
+		_atlas.Draw( "tall_grass", 700, 100, 96 * 4, 96 * 4 );
+		_atlas.Draw( "hello", 10, 10 );
+		_atlas.End();
 	}
 
 	public override void Update(
@@ -79,8 +79,7 @@ public sealed class MyGame : GameBase, IKeyHandler {
 	}
 
 	public override void Dispose() {
-		_terrain.Dispose();
-		_framebuffer.Dispose();
+		_atlas.Dispose();
 		_font.Dispose();
 	}
 }

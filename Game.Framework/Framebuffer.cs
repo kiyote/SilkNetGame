@@ -1,15 +1,17 @@
 ﻿using System.Drawing;
 using System.Numerics;
+using Game.Framework.Textures;
 using Silk.NET.OpenGL;
 
 namespace Game.Framework;
 
-public sealed class Framebuffer : RenderTarget, IDisposable {
+internal sealed class Framebuffer : IFramebuffer {
 	private readonly GL _gl;
 	private readonly Matrix4x4 _projection;
 	private readonly uint _width;
 	private readonly uint _height;
 	private readonly uint _framebuffer;
+	private readonly ITexture _texture;
 
 	private bool _isDisposed = false;
 
@@ -22,7 +24,7 @@ public sealed class Framebuffer : RenderTarget, IDisposable {
 		_width = width;
 		_height = height;
 
-		Texture = new Texture( gl, width, height );
+		_texture = new Textures.Texture( gl, width, height );
 
 		_framebuffer = _gl.GenFramebuffer();
 		_gl.BindFramebuffer( FramebufferTarget.Framebuffer, _framebuffer );
@@ -56,28 +58,37 @@ public sealed class Framebuffer : RenderTarget, IDisposable {
 		);
 	}
 
-	public Texture Texture { get; }
+	public ITexture Texture => _texture;
 
-	public void Clear(
+	void IRenderTarget.Clear(
 		Color colour
 	) {
-		Bind();
+		DoBind();
 		_gl.ClearColor( colour );
 		_gl.Clear( ClearBufferMask.ColorBufferBit );
 	}
 
-	internal override Matrix4x4 Projection => _projection;
+	Matrix4x4 IRenderTarget.Projection => _projection;
 
-	internal override uint Width => _width;
+	uint IRenderTarget.Width => _width;
 
-	internal override uint Height => _height;
+	uint IRenderTarget.Height => _height;
 
-	internal override void Bind() {
-		_gl.BindFramebuffer( FramebufferTarget.Framebuffer, _framebuffer );
-		_gl.Viewport( 0, 0, _width, _height );
+	void IRenderTarget.Bind() {
+		DoBind();
 	}
 
-	public void Dispose() {
+	uint ITexture.TextureWidth => _texture.TextureWidth;
+
+	uint ITexture.TextureHeight => _texture.TextureHeight;
+
+	uint ITexture.Id => _texture.Id;
+
+	void ITexture.Bind( int textureUnit ) {
+		_texture.Bind( textureUnit );
+	}
+
+	void IDisposable.Dispose() {
 		if( _isDisposed ) {
 			return;
 		}
@@ -88,6 +99,11 @@ public sealed class Framebuffer : RenderTarget, IDisposable {
 
 		_isDisposed = true;
 		GC.SuppressFinalize( this );
+	}
+
+	private void DoBind() {
+		_gl.BindFramebuffer( FramebufferTarget.Framebuffer, _framebuffer );
+		_gl.Viewport( 0, 0, _width, _height );
 	}
 
 	~Framebuffer() {

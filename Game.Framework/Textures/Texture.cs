@@ -1,14 +1,14 @@
 ﻿using Silk.NET.OpenGL;
 using StbImageSharp;
 
-namespace Game.Framework;
+namespace Game.Framework.Textures;
 
-public sealed class Texture : IDisposable {
+internal sealed class Texture : ITexture {
 	private readonly GL _gl;
 	private readonly uint _width;
 	private readonly uint _height;
 
-	private uint _texture;
+	private uint _id;
 	private bool _isDisposed = false;
 
 	internal Texture(
@@ -26,9 +26,9 @@ public sealed class Texture : IDisposable {
 		_width = (uint)image.Width;
 		_height = (uint)image.Height;
 
-		_texture = _gl.GenTexture();
+		_id = _gl.GenTexture();
 		_gl.ActiveTexture( TextureUnit.Texture0 );
-		_gl.BindTexture( TextureTarget.Texture2D, _texture );
+		_gl.BindTexture( TextureTarget.Texture2D, _id );
 
 		unsafe {
 			fixed( byte* ptr = image.Data ) {
@@ -59,6 +59,8 @@ public sealed class Texture : IDisposable {
 		uint width,
 		uint height
 	) {
+		_width = width;
+		_height = height;
 		uint texture = gl.GenTexture();
 
 		gl.ActiveTexture( TextureUnit.Texture0 );
@@ -86,32 +88,32 @@ public sealed class Texture : IDisposable {
 		gl.BindTexture( TextureTarget.Texture2D, 0 );
 
 		_gl = gl;
-		_texture = texture;
+		_id = texture;
 
 	}
 
-	internal uint Id => _texture;
+	uint ITexture.Id => _id;
 
-	public uint Width => _width;
+	uint ITexture.TextureHeight => _width;
 
-	public uint Height => _height;
+	uint ITexture.TextureWidth => _height;
 
-	internal void Bind(
+	void ITexture.Bind(
 		int textureUnit
 	) {
 		if( !_isDisposed ) {
 			_gl.ActiveTexture( TextureUnit.Texture0 + textureUnit );
-			_gl.BindTexture( TextureTarget.Texture2D, _texture );
+			_gl.BindTexture( TextureTarget.Texture2D, _id );
 		} else {
 			throw new ObjectDisposedException( nameof( Texture ) );
 		}
 	}
 
-	public void Dispose() {
+	void IDisposable.Dispose() {
 		if( !_isDisposed ) {
-			if( _texture != 0 ) {
-				_gl.DeleteTexture( _texture );
-				_texture = 0;
+			if( _id != 0 ) {
+				_gl.DeleteTexture( _id );
+				_id = 0;
 			}
 			_isDisposed = true;
 		}

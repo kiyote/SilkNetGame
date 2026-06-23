@@ -17,14 +17,14 @@ public static class Program {
 		DisplayOptions displayOptions = new DisplayOptions();
 		configuration.GetSection( DisplayOptions.Section ).Bind( displayOptions );
 
-		Device device = new Device(
-			Title,
-			displayOptions.Width,
-			displayOptions.Height,
-			displayOptions.VSync,
-			displayOptions.Mode
-		);
-		device
+		IDevice
+			.Create(
+				Title,
+				displayOptions.Width,
+				displayOptions.Height,
+				displayOptions.VSync,
+				displayOptions.Mode
+			)
 			.ConfigureServices( services => {
 				services.AddSingleton( configuration );
 				services.AddGame<MyGame>();
