@@ -1,4 +1,4 @@
-﻿using Game.Framework;
+﻿using GameFramework;
 
 namespace SilkNetGame;
 

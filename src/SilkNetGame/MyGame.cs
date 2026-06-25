@@ -1,9 +1,9 @@
-﻿using Game.Framework;
-using Game.Framework.Fonts;
-using Game.Framework.Sprites;
-using Game.Framework.Textures;
+﻿using System.Drawing;
+using GameFramework;
+using GameFramework.Fonts;
+using GameFramework.Sprites;
+using GameFramework.Textures;
 using Silk.NET.Input;
-using System.Drawing;
 
 namespace SilkNetGame;
 
@@ -36,7 +36,7 @@ internal sealed class MyGame : GameBase, IKeyHandler {
 		);
 
 		_atlas.Add( "tall_grass", terrain, 384, 256, 96, 96 );
-		_atlas.Add( "hello", _font, "My != You"u8, 0xFFFFFFFF, 0x000000FF, 1 );
+		_atlas.Add( "hello", _font, "0123456789.0123456789"u8, 0xFFFFFFFF, 0x000000FF, 1 );
 
 		terrain.Dispose();
 	}
@@ -57,23 +57,31 @@ internal sealed class MyGame : GameBase, IKeyHandler {
 		return false;
 	}
 
+	private float _rotation;
+
 	public override void Render(
 		double deltaTime
 	) {
 		_display.Clear( Color.CornflowerBlue );
 
+		Span<byte> buffer = stackalloc byte[128];
+		_rotation.TryFormat( buffer, out int bytesWritten, "F5", System.Globalization.CultureInfo.InvariantCulture );
+		_atlas.Update( "hello", _font, buffer[..bytesWritten], 0xFFFFFFFF, 0x000000FF, 1 );
+		
 		_atlas.Start( _display );
 		_atlas.Draw( "tall_grass", 100, 100 );
 		_atlas.Draw( "tall_grass", 200, 100, 96 * 2, 96 * 2 );
 		_atlas.Draw( "tall_grass", 400, 100, 96 * 3, 96 * 3 );
 		_atlas.Draw( "tall_grass", 700, 100, 96 * 4, 96 * 4 );
-		_atlas.Draw( "hello", 10, 10 );
+		_atlas.Draw( "hello", 75, 75, _rotation );
 		_atlas.Finish();
 	}
 
 	public override void Update(
 		double deltaTime
 	) {
+		_rotation += (float)(180.0 * deltaTime) * (MathF.PI / 180f);
+		_rotation %= 360f;
 	}
 
 	public override void Dispose() {

@@ -12,7 +12,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\Game\Framework\Game.Framework\Game.Framework.csproj" />
+		<ProjectReference Include="..\GameFramework\GameFramework.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>

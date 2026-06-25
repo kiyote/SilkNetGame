@@ -7,15 +7,10 @@
     <File Path="LICENSE" />
   </Folder>
   <Folder Name="/src/">
+    <Project Path="src/GameFramework/GameFramework.csproj" Id="d1159301-26f5-4a78-ae8b-708d3a475b69" />
     <Project Path="src/SilkNetGame/SilkNetGame.csproj" />
   </Folder>
-  <Folder Name="/src/Game/" />
-  <Folder Name="/src/Game/Framework/">
-    <Project Path="src/Game/Framework/Game.Framework/Game.Framework.csproj" Id="d1159301-26f5-4a78-ae8b-708d3a475b69" />
-  </Folder>
-  <Folder Name="/test/" />
-  <Folder Name="/test/Game/" />
-  <Folder Name="/test/Game/Framework/">
-    <Project Path="test/Game/Framework/Game.Framework.Tests/Game.Framework.Tests.csproj" Id="e8726c30-ab83-4f5a-90e8-01f99d008685" />
+  <Folder Name="/test/">
+    <Project Path="test/GameFramework.Tests/GameFramework.Tests.csproj" Id="e8726c30-ab83-4f5a-90e8-01f99d008685" />
   </Folder>
 </Solution>
