@@ -1,5 +1,7 @@
-﻿using System.Numerics;
+﻿using System.Buffers;
+using System.Numerics;
 using System.Runtime.CompilerServices;
+using System.Text;
 using GameFramework.Textures;
 using HarfBuzzSharp;
 using Silk.NET.OpenGL;
@@ -9,6 +11,9 @@ using Buffer = HarfBuzzSharp.Buffer;
 namespace GameFramework.Fonts;
 
 internal sealed unsafe class TtfFont : IFont {
+	// Largest UTF-8 byte count we encode on the stack before falling back to the pool.
+	private const int MaxStackTextBytes = 512;
+
 	private readonly GL _gl;
 	private byte[]? _fontData;
 	private StbTrueType.stbtt_fontinfo? _fontInfo;
@@ -245,6 +250,73 @@ internal sealed unsafe class TtfFont : IFont {
 		// 3. Compute final layout bounds dimensions
 		width = (int)Math.Ceiling( maxX - minX + ( outlineWidth * 2 ) );
 		height = (int)Math.Ceiling( maxY - minY + ( outlineWidth * 2 ) );
+	}
+
+	public void DrawText(
+		ITexture texture,
+		string text,
+		int x,
+		int y,
+		uint colour = 0xFFFFFFFF
+	) {
+		int maxBytes = Encoding.UTF8.GetMaxByteCount( text.Length );
+		byte[]? rented = null;
+		Span<byte> buffer = maxBytes <= MaxStackTextBytes
+			? stackalloc byte[MaxStackTextBytes]
+			: ( rented = ArrayPool<byte>.Shared.Rent( maxBytes ) );
+		try {
+			int written = Encoding.UTF8.GetBytes( text, buffer );
+			DrawText( texture, buffer[..written], x, y, colour );
+		} finally {
+			if( rented is not null ) {
+				ArrayPool<byte>.Shared.Return( rented );
+			}
+		}
+	}
+
+	public void DrawOutlinedText(
+		ITexture texture,
+		string text,
+		int x,
+		int y,
+		uint textColour = 0xFFFFFFFF,
+		uint outlineColour = 0x000000FF,
+		int outlineThickness = 1
+	) {
+		int maxBytes = Encoding.UTF8.GetMaxByteCount( text.Length );
+		byte[]? rented = null;
+		Span<byte> buffer = maxBytes <= MaxStackTextBytes
+			? stackalloc byte[MaxStackTextBytes]
+			: ( rented = ArrayPool<byte>.Shared.Rent( maxBytes ) );
+		try {
+			int written = Encoding.UTF8.GetBytes( text, buffer );
+			DrawOutlinedText( texture, buffer[..written], x, y, textColour, outlineColour, outlineThickness );
+		} finally {
+			if( rented is not null ) {
+				ArrayPool<byte>.Shared.Return( rented );
+			}
+		}
+	}
+
+	public void MeasureText(
+		string text,
+		int outlineWidth,
+		out int width,
+		out int height
+	) {
+		int maxBytes = Encoding.UTF8.GetMaxByteCount( text.Length );
+		byte[]? rented = null;
+		Span<byte> buffer = maxBytes <= MaxStackTextBytes
+			? stackalloc byte[MaxStackTextBytes]
+			: ( rented = ArrayPool<byte>.Shared.Rent( maxBytes ) );
+		try {
+			int written = Encoding.UTF8.GetBytes( text, buffer );
+			MeasureText( buffer[..written], outlineWidth, out width, out height );
+		} finally {
+			if( rented is not null ) {
+				ArrayPool<byte>.Shared.Return( rented );
+			}
+		}
 	}
 
 	private byte[] GenerateTextureData(

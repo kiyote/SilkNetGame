@@ -122,4 +122,36 @@ public interface ISpriteAtlas: IDisposable {
 		float originY,
 		uint colour = 0xFFFFFFFF
 	);
+
+	void Add(
+		string id,
+		IFont font,
+		string text,
+		uint colour = 0xFFFFFFFF
+	);
+
+	void Add(
+		string id,
+		IFont font,
+		string text,
+		uint textColour = 0xFFFFFFFF,
+		uint outlineColour = 0x000000FF,
+		int outlineWidth = 1
+	);
+
+	void Update(
+		string id,
+		IFont font,
+		string text,
+		uint colour = 0xFFFFFFFF
+	);
+
+	void Update(
+		string id,
+		IFont font,
+		string text,
+		uint textColour = 0xFFFFFFFF,
+		uint outlineColour = 0x000000FF,
+		int outlineWidth = 1
+	);
 }

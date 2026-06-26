@@ -3,6 +3,7 @@ using System.Numerics;
 using Silk.NET.Maths;
 using Silk.NET.OpenGL;
 using Silk.NET.Windowing;
+using Rectangle = System.Drawing.Rectangle;
 
 namespace GameFramework;
 
@@ -13,6 +14,7 @@ internal sealed class Display : IDisplay {
 	private uint _width;
 	private uint _height;
 	private Matrix4x4 _projection;
+	private Rectangle? _clip;
 
 	public Display(
 		IWindow window,
@@ -39,6 +41,41 @@ internal sealed class Display : IDisplay {
 		DoBind();
 	}
 
+	void IRenderTarget.SetClip(
+		Rectangle clip
+	) {
+		_clip = clip;
+		if( IsBound() ) {
+			ApplyClip();
+		}
+	}
+
+	void IRenderTarget.SetClip(
+		int x,
+		int y,
+		int w,
+		int h
+	) {
+		if (_clip is null
+			|| _clip.Value.X != x
+			|| _clip.Value.Y != y
+			|| _clip.Value.Width != w
+			|| _clip.Value.Height != h
+		) {
+			_clip = new Rectangle( x, y, w, h );
+		}
+		if( IsBound() ) {
+			ApplyClip();
+		}
+	}
+
+	void IRenderTarget.ClearClip() {
+		_clip = null;
+		if( IsBound() ) {
+			ApplyClip();
+		}
+	}
+
 	Matrix4x4 IRenderTarget.Projection => _projection;
 
 	uint IRenderTarget.Width => _width;
@@ -48,6 +85,24 @@ internal sealed class Display : IDisplay {
 	private void DoBind() {
 		_gl.BindFramebuffer( FramebufferTarget.Framebuffer, 0 );
 		_gl.Viewport( 0, 0, _width, _height );
+		ApplyClip();
+	}
+
+	private void ApplyClip() {
+		if( _clip is Rectangle clip ) {
+			// The display projection has its origin at the top-left, but the
+			// OpenGL scissor box is measured from the bottom-left, so flip Y.
+			int y = (int)_height - ( clip.Y + clip.Height );
+			_gl.Enable( EnableCap.ScissorTest );
+			_gl.Scissor( clip.X, y, (uint)clip.Width, (uint)clip.Height );
+		} else {
+			_gl.Disable( EnableCap.ScissorTest );
+		}
+	}
+
+	private bool IsBound() {
+		_gl.GetInteger( GLEnum.FramebufferBinding, out int bound );
+		return bound == 0;
 	}
 
 	private void FramebufferResize(

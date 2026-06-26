@@ -14,6 +14,7 @@ internal sealed class Framebuffer : IFramebuffer {
 	private readonly ITexture _texture;
 
 	private bool _isDisposed;
+	private Rectangle? _clip;
 
 	public Framebuffer(
 		GL gl,
@@ -78,6 +79,41 @@ internal sealed class Framebuffer : IFramebuffer {
 		DoBind();
 	}
 
+	void IRenderTarget.SetClip(
+		Rectangle clip
+	) {
+		_clip = clip;
+		if( IsBound() ) {
+			ApplyClip();
+		}
+	}
+
+	void IRenderTarget.SetClip(
+		int x,
+		int y,
+		int w,
+		int h
+	) {
+		if( _clip is null
+			|| _clip.Value.X != x
+			|| _clip.Value.Y != y
+			|| _clip.Value.Width != w
+			|| _clip.Value.Height != h
+		) {
+			_clip = new Rectangle( x, y, w, h );
+		}
+		if( IsBound() ) {
+			ApplyClip();
+		}
+	}
+
+	void IRenderTarget.ClearClip() {
+		_clip = null;
+		if( IsBound() ) {
+			ApplyClip();
+		}
+	}
+
 	uint ITexture.TextureWidth => _texture.TextureWidth;
 
 	uint ITexture.TextureHeight => _texture.TextureHeight;
@@ -104,6 +140,23 @@ internal sealed class Framebuffer : IFramebuffer {
 	private void DoBind() {
 		_gl.BindFramebuffer( FramebufferTarget.Framebuffer, _framebuffer );
 		_gl.Viewport( 0, 0, _width, _height );
+		ApplyClip();
+	}
+
+	private void ApplyClip() {
+		if( _clip is Rectangle clip ) {
+			// The framebuffer projection already has its origin at the
+			// bottom-left, matching the OpenGL scissor box, so no Y flip.
+			_gl.Enable( EnableCap.ScissorTest );
+			_gl.Scissor( clip.X, clip.Y, (uint)clip.Width, (uint)clip.Height );
+		} else {
+			_gl.Disable( EnableCap.ScissorTest );
+		}
+	}
+
+	private bool IsBound() {
+		_gl.GetInteger( GLEnum.FramebufferBinding, out int bound );
+		return (uint)bound == _framebuffer;
 	}
 
 	~Framebuffer() {

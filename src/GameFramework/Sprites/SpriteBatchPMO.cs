@@ -1,4 +1,5 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System.Numerics;
+using System.Runtime.CompilerServices;
 using GameFramework.Textures;
 using Silk.NET.OpenGL;
 
@@ -254,6 +255,12 @@ internal unsafe sealed class SpriteBatchPMO : ISpriteBatch {
 
 		_gl.BindVertexArray( 0 );
 		_isBatching = false;
+	}
+
+	private void FlushPending() {
+		if( _bufferedSprites > 0 ) {
+			FlushBatch();
+		}
 	}
 
 	private void FlushBatch() {

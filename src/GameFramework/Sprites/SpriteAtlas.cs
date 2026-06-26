@@ -30,6 +30,15 @@ internal sealed class SpriteAtlas : ISpriteAtlas {
 		ReadOnlySpan<byte> text,
 		uint colour
 	) {
+		DoAdd( id, font, text, colour );
+	}
+
+	private void DoAdd(
+		string id,
+		IFont font,
+		ReadOnlySpan<byte> text,
+		uint colour
+	) {
 		font.MeasureText( text, 0, out int width, out int height );
 		Sprite sprite = _cache.Insert( id, _texture, width, height );
 		font.DrawText( _texture, text, sprite.X, sprite.Y, colour );
@@ -43,46 +52,76 @@ internal sealed class SpriteAtlas : ISpriteAtlas {
 		uint outlineColour,
 		int outlineWidth
 	) {
+		DoAdd( id, font, text, textColour, outlineColour, outlineWidth );
+	}
+
+	private void DoAdd(
+		string id,
+		IFont font,
+		ReadOnlySpan<byte> text,
+		uint textColour,
+		uint outlineColour,
+		int outlineWidth
+	) {
 		font.MeasureText( text, outlineWidth, out int width, out int height );
 		Sprite sprite = _cache.Insert( id, _texture, width, height );
 		font.DrawOutlinedText( _texture, text, sprite.X, sprite.Y, textColour, outlineColour, outlineWidth );
 	}
 
-    void ISpriteAtlas.Update(
+	void ISpriteAtlas.Update(
         string id,
         IFont font,
         ReadOnlySpan<byte> text,
         uint colour
-    )
-    {
-        font.MeasureText(text, 0, out int width, out int height);
-		CachedSprite sprite = _cache[id];
-        if (width > sprite.AllocatedWidth || height > sprite.AllocatedHeight) {
-            throw new InvalidOperationException( "Updated text dimensions exceed the allocated sprite dimensions." );
-        }
-		sprite.Sprite.Update( _texture, sprite.Sprite.X, sprite.Sprite.Y, width, height );
-        font.DrawText(_texture, text, sprite.Sprite.X, sprite.Sprite.Y, colour);
+    ) {
+		DoUpdate( id, font, text, colour );
     }
 
-    void ISpriteAtlas.Update(
+	private void DoUpdate(
+		string id,
+		IFont font,
+		ReadOnlySpan<byte> text,
+		uint colour
+	) {
+		font.MeasureText( text, 0, out int width, out int height );
+		CachedSprite sprite = _cache[id];
+		if( width > sprite.AllocatedWidth || height > sprite.AllocatedHeight ) {
+			throw new InvalidOperationException( "Updated text dimensions exceed the allocated sprite dimensions." );
+		}
+		sprite.Sprite.Update( _texture, sprite.Sprite.X, sprite.Sprite.Y, width, height );
+		font.DrawText( _texture, text, sprite.Sprite.X, sprite.Sprite.Y, colour );
+	}
+
+	void ISpriteAtlas.Update(
         string id,
         IFont font,
         ReadOnlySpan<byte> text,
         uint textColour,
         uint outlineColour,
         int outlineWidth
-    )
-    {
-        font.MeasureText(text, outlineWidth, out int width, out int height);
+    ) {
+		DoUpdate( id, font, text, textColour, outlineColour, outlineWidth );
+		
+    }
+
+	private void DoUpdate(
+		string id,
+		IFont font,
+		ReadOnlySpan<byte> text,
+		uint textColour,
+		uint outlineColour,
+		int outlineWidth
+	) {
+		font.MeasureText( text, outlineWidth, out int width, out int height );
 		CachedSprite sprite = _cache[id];
-		if (width > sprite.AllocatedWidth || height > sprite.AllocatedHeight) {
+		if( width > sprite.AllocatedWidth || height > sprite.AllocatedHeight ) {
 			throw new InvalidOperationException( "Updated text dimensions exceed the allocated sprite dimensions." );
 		}
 		sprite.Sprite.Update( _texture, sprite.Sprite.X, sprite.Sprite.Y, width, height );
-		font.DrawOutlinedText(_texture, text, sprite.Sprite.X, sprite.Sprite.Y, textColour, outlineColour, outlineWidth);
-    }
+		font.DrawOutlinedText( _texture, text, sprite.Sprite.X, sprite.Sprite.Y, textColour, outlineColour, outlineWidth );
+	}
 
-    void ISpriteAtlas.Add(
+	void ISpriteAtlas.Add(
 		string id,
 		ITexture source,
 		int x,
@@ -143,6 +182,62 @@ internal sealed class SpriteAtlas : ISpriteAtlas {
 			srcHeight: (uint)h,                    // Height of the portion to copy
 			srcDepth: 1                        // Depth of the portion to copy (1 for 2D)
 		);
+	}
+
+	void ISpriteAtlas.Add(
+		string id,
+		IFont font,
+		string text,
+		uint colour
+	) {
+		font.MeasureText( text, 0, out int width, out int height );
+		Sprite sprite = _cache.Insert( id, _texture, width, height );
+		font.DrawText( _texture, text, sprite.X, sprite.Y, colour );
+	}
+
+	void ISpriteAtlas.Add(
+		string id,
+		IFont font,
+		string text,
+		uint textColour,
+		uint outlineColour,
+		int outlineWidth
+	) {
+		font.MeasureText( text, outlineWidth, out int width, out int height );
+		Sprite sprite = _cache.Insert( id, _texture, width, height );
+		font.DrawOutlinedText( _texture, text, sprite.X, sprite.Y, textColour, outlineColour, outlineWidth );
+	}
+
+	void ISpriteAtlas.Update(
+		string id,
+		IFont font,
+		string text,
+		uint colour
+	) {
+		font.MeasureText( text, 0, out int width, out int height );
+		CachedSprite sprite = _cache[id];
+		if( width > sprite.AllocatedWidth || height > sprite.AllocatedHeight ) {
+			throw new InvalidOperationException( "Updated text dimensions exceed the allocated sprite dimensions." );
+		}
+		sprite.Sprite.Update( _texture, sprite.Sprite.X, sprite.Sprite.Y, width, height );
+		font.DrawText( _texture, text, sprite.Sprite.X, sprite.Sprite.Y, colour );
+	}
+
+	void ISpriteAtlas.Update(
+		string id,
+		IFont font,
+		string text,
+		uint textColour,
+		uint outlineColour,
+		int outlineWidth
+	) {
+		font.MeasureText( text, outlineWidth, out int width, out int height );
+		CachedSprite sprite = _cache[id];
+		if( width > sprite.AllocatedWidth || height > sprite.AllocatedHeight ) {
+			throw new InvalidOperationException( "Updated text dimensions exceed the allocated sprite dimensions." );
+		}
+		sprite.Sprite.Update( _texture, sprite.Sprite.X, sprite.Sprite.Y, width, height );
+		font.DrawOutlinedText( _texture, text, sprite.Sprite.X, sprite.Sprite.Y, textColour, outlineColour, outlineWidth );
 	}
 
 	void ISpriteAtlas.Start(

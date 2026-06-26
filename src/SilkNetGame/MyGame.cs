@@ -14,6 +14,7 @@ internal sealed class MyGame : GameBase, IKeyHandler {
 	private readonly Keyboard _keyboard;
 	private readonly IFont _font;
 	private readonly ISpriteAtlas _atlas;
+	private readonly Rectangle _clip;
 
 	public MyGame(
 		IDevice device,
@@ -38,6 +39,8 @@ internal sealed class MyGame : GameBase, IKeyHandler {
 		_atlas.Add( "tall_grass", terrain, 384, 256, 96, 96 );
 		_atlas.Add( "hello", _font, "0123456789.0123456789"u8, 0xFFFFFFFF, 0x000000FF, 1 );
 
+		_clip = new Rectangle( 75, 75, 300, 300 );
+
 		terrain.Dispose();
 	}
 
@@ -57,6 +60,7 @@ internal sealed class MyGame : GameBase, IKeyHandler {
 		return false;
 	}
 
+	private float _oldRotation = -1.0f;
 	private float _rotation;
 
 	public override void Render(
@@ -64,10 +68,13 @@ internal sealed class MyGame : GameBase, IKeyHandler {
 	) {
 		_display.Clear( Color.CornflowerBlue );
 
-		Span<byte> buffer = stackalloc byte[128];
-		_rotation.TryFormat( buffer, out int bytesWritten, "F5", System.Globalization.CultureInfo.InvariantCulture );
-		_atlas.Update( "hello", _font, buffer[..bytesWritten], 0xFFFFFFFF, 0x000000FF, 1 );
-		
+		if (_oldRotation != _rotation) {
+			_oldRotation = _rotation;
+			string formattedRotation = _rotation.ToString( "F5", System.Globalization.CultureInfo.InvariantCulture );
+			_atlas.Update( "hello", _font, formattedRotation, 0xFFFFFFFF, 0x000000FF, 1 );
+		}
+
+		_display.SetClip( _clip );
 		_atlas.Start( _display );
 		_atlas.Draw( "tall_grass", 100, 100 );
 		_atlas.Draw( "tall_grass", 200, 100, 96 * 2, 96 * 2 );
@@ -75,6 +82,7 @@ internal sealed class MyGame : GameBase, IKeyHandler {
 		_atlas.Draw( "tall_grass", 700, 100, 96 * 4, 96 * 4 );
 		_atlas.Draw( "hello", 75, 75, _rotation );
 		_atlas.Finish();
+		_display.ClearClip();
 	}
 
 	public override void Update(
@@ -82,6 +90,7 @@ internal sealed class MyGame : GameBase, IKeyHandler {
 	) {
 		_rotation += (float)(180.0 * deltaTime) * (MathF.PI / 180f);
 		_rotation %= 360f;
+		_rotation = MathF.Round( _rotation, 5 );
 	}
 
 	public override void Dispose() {
