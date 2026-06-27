@@ -74,7 +74,7 @@ internal sealed class MyGame : GameBase, IKeyHandler {
 			_atlas.Update( "hello", _font, formattedRotation, 0xFFFFFFFF, 0x000000FF, 1 );
 		}
 
-		_display.SetClip( _clip );
+		//_display.SetClip( _clip );
 		_atlas.Start( _display );
 		_atlas.Draw( "tall_grass", 100, 100 );
 		_atlas.Draw( "tall_grass", 200, 100, 96 * 2, 96 * 2 );
@@ -82,7 +82,7 @@ internal sealed class MyGame : GameBase, IKeyHandler {
 		_atlas.Draw( "tall_grass", 700, 100, 96 * 4, 96 * 4 );
 		_atlas.Draw( "hello", 75, 75, _rotation );
 		_atlas.Finish();
-		_display.ClearClip();
+		//_display.ClearClip();
 	}
 
 	public override void Update(

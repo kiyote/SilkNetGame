@@ -35,10 +35,10 @@ public sealed class Sprite: IEquatable<Sprite> {
 		Y = y;
 		Width = width;
 		Height = height;
-		u1 = x / (float)texture.TextureHeight;
-		v1 = y / (float)texture.TextureWidth;
-		u2 = ( x + width ) / (float)texture.TextureHeight;
-		v2 = ( y + height ) / (float)texture.TextureWidth;
+		u1 = x / (float)texture.TextureWidth;
+		v1 = y / (float)texture.TextureHeight;
+		u2 = ( x + width ) / (float)texture.TextureWidth;
+		v2 = ( y + height ) / (float)texture.TextureHeight;
 	}
 
 	public bool Equals( Sprite? other ) {

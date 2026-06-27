@@ -94,9 +94,9 @@ internal sealed class Texture : ITexture {
 
 	uint ITexture.Id => _id;
 
-	uint ITexture.TextureHeight => _width;
+	uint ITexture.TextureWidth => _width;
 
-	uint ITexture.TextureWidth => _height;
+	uint ITexture.TextureHeight => _height;
 
 	void ITexture.Bind(
 		int textureUnit
