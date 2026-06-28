@@ -1,4 +1,5 @@
 ﻿using System.Buffers;
+using System.IO;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -44,11 +45,13 @@ internal sealed unsafe class TtfFont : IFont {
 		float fontSize
 	) {
 		_gl = gl;
-		_fontData = File.ReadAllBytes( fontPath );
+		string resolvedPath = GameFramework.ImageLoader.ResolveAssetPath( fontPath );
+		_fontData = File.ReadAllBytes( resolvedPath );
 
 		_fontInfo = new StbTrueType.stbtt_fontinfo();
 		fixed( byte* ptr = _fontData ) {
-			if( StbTrueType.stbtt_InitFont( _fontInfo, ptr, 0 ) == 0 ) {
+			int result = StbTrueType.stbtt_InitFont( _fontInfo, ptr, 0 );
+			if( result != 1 ) {
 				throw new InvalidOperationException( "Failed to initialize font data." );
 			}
 		}

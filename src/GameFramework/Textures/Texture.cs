@@ -1,5 +1,6 @@
 ﻿using Silk.NET.OpenGL;
 using StbImageSharp;
+using System.Runtime.InteropServices;
 
 namespace GameFramework.Textures;
 
@@ -29,13 +30,14 @@ internal sealed class Texture : ITexture {
 		_id = _gl.GenTexture();
 		_gl.ActiveTexture( TextureUnit.Texture0 );
 		_gl.BindTexture( TextureTarget.Texture2D, _id );
+		_gl.PixelStore( PixelStoreParameter.UnpackAlignment, 1 );
 
 		unsafe {
 			fixed( byte* ptr = image.Data ) {
 				_gl.TexImage2D(
 					TextureTarget.Texture2D,
 					0,
-					InternalFormat.Rgba,
+					InternalFormat.Rgba8,
 					(uint)image.Width,
 					(uint)image.Height,
 					0,
@@ -46,12 +48,12 @@ internal sealed class Texture : ITexture {
 			}
 		}
 
-		_gl.TexParameter( TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)TextureWrapMode.Repeat );
-		_gl.TexParameter( TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)TextureWrapMode.Repeat );
+		_gl.TexParameter( TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)TextureWrapMode.ClampToEdge );
+		_gl.TexParameter( TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)TextureWrapMode.ClampToEdge );
 		_gl.TexParameter( TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Nearest );
 		_gl.TexParameter( TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Nearest );
 
-		_gl.BindTexture( TextureTarget.Texture2D, 0 );
+		_gl.BindTexture( TextureTarget.Texture2D, 0 );	
 	}
 
 	internal Texture(
@@ -102,7 +104,7 @@ internal sealed class Texture : ITexture {
 		int textureUnit
 	) {
 		if( !_isDisposed ) {
-			_gl.ActiveTexture( TextureUnit.Texture0 + textureUnit );
+			_gl.ActiveTexture( (TextureUnit)((int)TextureUnit.Texture0 + textureUnit) );
 			_gl.BindTexture( TextureTarget.Texture2D, _id );
 		} else {
 			throw new ObjectDisposedException( nameof( Texture ) );

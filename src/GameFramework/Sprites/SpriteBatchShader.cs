@@ -8,6 +8,7 @@ internal sealed class SpriteBatchShader : Shader {
 	private int _projectionLocation = -1;
 	private int _textureLocation = -1;
 
+
 	private const string FragmentCode = """
 		#version 330 core
 
@@ -70,6 +71,6 @@ internal sealed class SpriteBatchShader : Shader {
 		unsafe {
 			GL.UniformMatrix4( _projectionLocation, 1, false, (float*)&newOrtho );
 		}
-		GL.Uniform1( _textureLocation, textureUnit );
+		GL.Uniform1( _textureLocation, 0 );
 	}
 }

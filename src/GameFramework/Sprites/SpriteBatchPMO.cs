@@ -94,7 +94,8 @@ internal unsafe sealed class SpriteBatchPMO : ISpriteBatch {
 			_gl.BufferData( BufferTargetARB.ElementArrayBuffer, (nuint)( indices.Length * sizeof( ushort ) ), ptr, BufferUsageARB.StaticDraw );
 		}
 
-		_gl.BindVertexArray( 0 );
+        _gl.BindBuffer( BufferTargetARB.ElementArrayBuffer, 0 );
+        _gl.BindVertexArray( 0 );
 	}
 
 	void ISpriteBatch.Start(
@@ -271,9 +272,9 @@ internal unsafe sealed class SpriteBatchPMO : ISpriteBatch {
 		_gl.BindBuffer( BufferTargetARB.ArrayBuffer, _vbo );
 		_gl.FlushMappedBufferRange( GLEnum.ArrayBuffer, (nint)segmentOffsetBytes, (nuint)dataSizeInBytes );
 
-		_gl.MemoryBarrier( MemoryBarrierMask.ClientMappedBufferBarrierBit );
-
 		_gl.BindBuffer( BufferTargetARB.ElementArrayBuffer, _ibo );
+
+		_gl.MemoryBarrier( MemoryBarrierMask.ClientMappedBufferBarrierBit );
 
 		int baseVertex = (int)( segmentOffsetBytes / STRIDE );
 		uint indexCount = (uint)( _bufferedSprites * 6 );
@@ -282,7 +283,7 @@ internal unsafe sealed class SpriteBatchPMO : ISpriteBatch {
 			PrimitiveType.Triangles,
 			indexCount,
 			DrawElementsType.UnsignedShort,
-			(void*)0,
+			null,
 			baseVertex
 		);
 
