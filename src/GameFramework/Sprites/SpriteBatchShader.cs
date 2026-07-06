@@ -61,8 +61,7 @@ internal sealed class SpriteBatchShader : Shader {
 	}
 
 	public void Bind(
-		IRenderTarget renderTarget,
-		int textureUnit
+		IRenderTarget renderTarget
 	) {
 		renderTarget.Bind();
 		Bind();

@@ -82,23 +82,27 @@ internal sealed class Device : IDevice {
 
 	ITexture IDevice.LoadTexture(
 		string textureFile,
-		bool premultiplyAlpha
+		bool premultiplyAlpha,
+		TextureFilter filter
 	) {
 		return new Textures.Texture(
 			_gl,
 			textureFile,
-			premultiplyAlpha
+			premultiplyAlpha,
+			filter
 		);
 	}
 
 	IFramebuffer IDevice.CreateFramebuffer(
-		uint width,
-		uint height
+		int width,
+		int height,
+		TextureFilter filter
 	) {
 		return new Framebuffer(
 			_gl,
 			width,
-			height
+			height,
+			filter
 		);
 	}
 

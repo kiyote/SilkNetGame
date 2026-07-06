@@ -1,5 +1,4 @@
 ﻿using System.Buffers;
-using System.IO;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -26,7 +25,6 @@ internal sealed unsafe class TtfFont : IFont {
 
 	private readonly Dictionary<uint, GlyphMetrics> _glyphCache = [];
 
-	// Reusable scratch state so per-frame text shaping/rasterization is allocation-free.
 	private readonly Buffer _buffer = new Buffer();
 	private readonly List<(GlyphMetrics Metrics, Vector2 FinalPos)> _renderedGlyphs = [];
 	private byte[] _compositePixels = [];
@@ -45,8 +43,7 @@ internal sealed unsafe class TtfFont : IFont {
 		float fontSize
 	) {
 		_gl = gl;
-		string resolvedPath = GameFramework.ImageLoader.ResolveAssetPath( fontPath );
-		_fontData = File.ReadAllBytes( resolvedPath );
+		_fontData = File.ReadAllBytes( fontPath );
 
 		_fontInfo = new StbTrueType.stbtt_fontinfo();
 		fixed( byte* ptr = _fontData ) {
@@ -93,7 +90,8 @@ internal sealed unsafe class TtfFont : IFont {
 	) {
 		ObjectDisposedException.ThrowIf( _isDisposed, this );
 
-		byte[] textureData = GenerateTextureData( text, colour, out int width, out int height );
+		// Text with no outline is just the outlined path with a zero-width stroke.
+		byte[] textureData = GenerateTextureData( text, colour, 0u, 0, out int width, out int height );
 
 		UploadClipped( texture, textureData, x, y, width, height );
 	}
@@ -197,62 +195,7 @@ internal sealed unsafe class TtfFont : IFont {
 		out int width,
 		out int height
 	) {
-		// 1. Process text through HarfBuzz to get glyph IDs and layout tracking metrics
-		ShapeText( text );
-
-		ReadOnlySpan<GlyphInfo> infos = _buffer.GetGlyphInfoSpan();
-		ReadOnlySpan<GlyphPosition> positions = _buffer.GetGlyphPositionSpan();
-		int glyphCount = _buffer.Length;
-
-		float penX = 0f;
-		float penY = 0f;
-
-		// Track extreme boundaries to calculate overall footprint size
-		float minX = float.MaxValue, minY = float.MaxValue;
-		float maxX = float.MinValue, maxY = float.MinValue;
-		bool hasVisibleGlyphs = false;
-
-		for( int i = 0; i < glyphCount; i++ ) {
-			uint glyphId = infos[i].Codepoint;
-
-			// 2. Fetch StbTrueType spatial metrics from our internal cache dictionary
-			GlyphMetrics glyph = GetOrCacheGlyph( glyphId );
-
-			// Convert fractional HarfBuzz metrics back to pixel space
-			float hbXOffset = positions[i].XOffset / 64.0f;
-			float hbYOffset = positions[i].YOffset / 64.0f;
-			float hbXAdvance = positions[i].XAdvance / 64.0f;
-			float hbYAdvance = positions[i].YAdvance / 64.0f;
-
-			// Calculate the physical starting bounds of this character
-			float xPos = penX + glyph.XOffset + hbXOffset;
-			float yPos = penY + glyph.YOffset + hbYOffset;
-
-			if( glyph.Width > 0 && glyph.Height > 0 ) {
-				hasVisibleGlyphs = true;
-
-				// Expand bounding targets
-				minX = Math.Min( minX, xPos );
-				minY = Math.Min( minY, yPos );
-				maxX = Math.Max( maxX, xPos + glyph.Width );
-				maxY = Math.Max( maxY, yPos + glyph.Height );
-			}
-
-			// Move the pen cursor ahead based on HarfBuzz spacing definitions
-			penX += hbXAdvance;
-			penY += hbYAdvance;
-		}
-
-		// Return empty size if string is empty or completely whitespace
-		if( !hasVisibleGlyphs ) {
-			width = 0;
-			height = 0;
-			return;
-		}
-
-		// 3. Compute final layout bounds dimensions
-		width = (int)Math.Ceiling( maxX - minX + ( outlineWidth * 2 ) );
-		height = (int)Math.Ceiling( maxY - minY + ( outlineWidth * 2 ) );
+		LayoutGlyphs( text, outlineWidth, out width, out height, out _, out _ );
 	}
 
 	public void DrawText(
@@ -263,17 +206,17 @@ internal sealed unsafe class TtfFont : IFont {
 		uint colour = 0xFFFFFFFF
 	) {
 		int maxBytes = Encoding.UTF8.GetMaxByteCount( text.Length );
-		byte[]? rented = null;
-		Span<byte> buffer = maxBytes <= MaxStackTextBytes
-			? stackalloc byte[MaxStackTextBytes]
-			: ( rented = ArrayPool<byte>.Shared.Rent( maxBytes ) );
-		try {
+
+		if (maxBytes <= MaxStackTextBytes) {
+			Span<byte> buffer = stackalloc byte[MaxStackTextBytes];
 			int written = Encoding.UTF8.GetBytes( text, buffer );
 			DrawText( texture, buffer[..written], x, y, colour );
-		} finally {
-			if( rented is not null ) {
-				ArrayPool<byte>.Shared.Return( rented );
-			}
+		} else {
+			byte[] rented = ArrayPool<byte>.Shared.Rent( maxBytes );
+			Span<byte> buffer = rented;
+			int written = Encoding.UTF8.GetBytes( text, buffer );
+			DrawText( texture, buffer[..written], x, y, colour );
+			ArrayPool<byte>.Shared.Return( rented );
 		}
 	}
 
@@ -287,17 +230,17 @@ internal sealed unsafe class TtfFont : IFont {
 		int outlineThickness = 1
 	) {
 		int maxBytes = Encoding.UTF8.GetMaxByteCount( text.Length );
-		byte[]? rented = null;
-		Span<byte> buffer = maxBytes <= MaxStackTextBytes
-			? stackalloc byte[MaxStackTextBytes]
-			: ( rented = ArrayPool<byte>.Shared.Rent( maxBytes ) );
-		try {
+
+		if( maxBytes <= MaxStackTextBytes ) {
+			Span<byte> buffer = stackalloc byte[MaxStackTextBytes];
 			int written = Encoding.UTF8.GetBytes( text, buffer );
-			DrawOutlinedText( texture, buffer[..written], x, y, textColour, outlineColour, outlineThickness );
-		} finally {
-			if( rented is not null ) {
-				ArrayPool<byte>.Shared.Return( rented );
-			}
+			DrawOutlinedText( texture, buffer, x, y, textColour, outlineColour, outlineThickness );
+		} else {
+			byte[] rented = ArrayPool<byte>.Shared.Rent( maxBytes );
+			Span<byte> buffer = rented;
+			int written = Encoding.UTF8.GetBytes( text, buffer );
+			DrawOutlinedText( texture, buffer, x, y, textColour, outlineColour, outlineThickness );
+			ArrayPool<byte>.Shared.Return( rented );
 		}
 	}
 
@@ -308,45 +251,50 @@ internal sealed unsafe class TtfFont : IFont {
 		out int height
 	) {
 		int maxBytes = Encoding.UTF8.GetMaxByteCount( text.Length );
-		byte[]? rented = null;
-		Span<byte> buffer = maxBytes <= MaxStackTextBytes
-			? stackalloc byte[MaxStackTextBytes]
-			: ( rented = ArrayPool<byte>.Shared.Rent( maxBytes ) );
-		try {
+
+		if( maxBytes <= MaxStackTextBytes ) {
+			Span<byte> buffer = stackalloc byte[MaxStackTextBytes];
 			int written = Encoding.UTF8.GetBytes( text, buffer );
-			MeasureText( buffer[..written], outlineWidth, out width, out height );
-		} finally {
-			if( rented is not null ) {
-				ArrayPool<byte>.Shared.Return( rented );
-			}
+			MeasureText( buffer, outlineWidth, out width, out height );
+		} else {
+			byte[] rented = ArrayPool<byte>.Shared.Rent( maxBytes );
+			Span<byte> buffer = rented;
+			int written = Encoding.UTF8.GetBytes( text, buffer );
+			MeasureText( buffer, outlineWidth, out width, out height );
+			ArrayPool<byte>.Shared.Return( rented );
 		}
 	}
 
-	private byte[] GenerateTextureData(
+	// Shapes 'text', caches each glyph bitmap, records the visible glyphs into the
+	// reusable _renderedGlyphs scratch list, and reports the padded pixel footprint.
+	// 'padding' expands the bounds on every side (used for outline spread).
+	// Returns false (with a zero-sized footprint) when nothing visible was produced.
+	private bool LayoutGlyphs(
 		ReadOnlySpan<byte> text,
-		uint colour,
+		int padding,
 		out int outputWidth,
-		out int outputHeight
+		out int outputHeight,
+		out float minX,
+		out float minY
 	) {
-		(float baseR, float baseG, float baseB, float textAlphaFactor) = DecomposeRgba( colour );
-
-		// 1. Process text through HarfBuzz (identical to previous versions)
+		// Process text through HarfBuzz to get glyph IDs and layout tracking metrics.
 		ShapeText( text );
 
 		ReadOnlySpan<GlyphInfo> infos = _buffer.GetGlyphInfoSpan();
 		ReadOnlySpan<GlyphPosition> positions = _buffer.GetGlyphPositionSpan();
 		int glyphCount = _buffer.Length;
 
-		// 2. Pre-fetch metrics and calculate bounding box sizes
 		_renderedGlyphs.Clear();
 		float penX = 0f, penY = 0f;
-		float minX = float.MaxValue, minY = float.MaxValue;
+		minX = float.MaxValue;
+		minY = float.MaxValue;
 		float maxX = float.MinValue, maxY = float.MinValue;
 
 		for( int i = 0; i < glyphCount; i++ ) {
 			uint glyphId = infos[i].Codepoint;
 			GlyphMetrics glyph = GetOrCacheGlyph( glyphId );
 
+			// Convert fractional HarfBuzz metrics back to pixel space.
 			float hbXOffset = positions[i].XOffset / 64.0f;
 			float hbYOffset = positions[i].YOffset / 64.0f;
 			float hbXAdvance = positions[i].XAdvance / 64.0f;
@@ -357,70 +305,31 @@ internal sealed unsafe class TtfFont : IFont {
 
 			if( glyph.Width > 0 && glyph.Height > 0 ) {
 				_renderedGlyphs.Add( (glyph, new Vector2( xPos, yPos )) );
-				minX = Math.Min( minX, xPos );
-				minY = Math.Min( minY, yPos );
-				maxX = Math.Max( maxX, xPos + glyph.Width );
-				maxY = Math.Max( maxY, yPos + glyph.Height );
+
+				// Expand the bounding box, accounting for any outline spread.
+				minX = Math.Min( minX, xPos - padding );
+				minY = Math.Min( minY, yPos - padding );
+				maxX = Math.Max( maxX, xPos + glyph.Width + padding );
+				maxY = Math.Max( maxY, yPos + glyph.Height + padding );
 			}
+
+			// Move the pen cursor ahead based on HarfBuzz spacing definitions.
 			penX += hbXAdvance;
 			penY += hbYAdvance;
 		}
 
+		// Empty or completely whitespace string: report a zero-sized footprint.
 		if( _renderedGlyphs.Count == 0 ) {
 			outputWidth = 0;
 			outputHeight = 0;
-			return [];
+			minX = 0f;
+			minY = 0f;
+			return false;
 		}
 
 		outputWidth = (int)Math.Ceiling( maxX - minX );
 		outputHeight = (int)Math.Ceiling( maxY - minY );
-
-		byte[] compositePixels = RentCompositeBuffer( outputWidth * outputHeight * 4 );
-
-		// 3. Blit and compute Pre-Multiplied Alpha values
-		foreach( (GlyphMetrics glyph, Vector2 position) in _renderedGlyphs ) {
-			int startX = (int)Math.Round( position.X - minX );
-			int startY = (int)Math.Round( position.Y - minY );
-
-			for( int row = 0; row < glyph.Height; row++ ) {
-				int targetY = startY + row;
-				if( targetY < 0 || targetY >= outputHeight ) {
-					continue;
-				}
-
-				for( int col = 0; col < glyph.Width; col++ ) {
-					int targetX = startX + col;
-					if( targetX < 0 || targetX >= outputWidth ) {
-						continue;
-					}
-
-					int sourceIndex = ( row * glyph.Width ) + col;
-					byte glyphAlpha = glyph.Pixels[sourceIndex];
-					if( glyphAlpha == 0 ) {
-						continue;
-					}
-
-					int targetIndex = ( ( targetY * outputWidth ) + targetX ) * 4;
-
-					// Step A: Calculate the true, normalized 0.0 - 1.0 opacity float for this specific subpixel
-					float finalAlphaNormalized = glyphAlpha / 255f * textAlphaFactor;
-
-					// Step B: Multiply RGB channels directly by that calculated alpha value (The Pre-Multiply Step)
-					byte pR = (byte)Math.Clamp( baseR * finalAlphaNormalized * 255f, 0f, 255f );
-					byte pG = (byte)Math.Clamp( baseG * finalAlphaNormalized * 255f, 0f, 255f );
-					byte pB = (byte)Math.Clamp( baseB * finalAlphaNormalized * 255f, 0f, 255f );
-					byte pA = (byte)Math.Clamp( finalAlphaNormalized * 255f, 0f, 255f );
-
-					// Step C: Write the modified components out to the byte array
-					compositePixels[targetIndex + 0] = pR;
-					compositePixels[targetIndex + 1] = pG;
-					compositePixels[targetIndex + 2] = pB;
-					compositePixels[targetIndex + 3] = pA;
-				}
-			}
-		}
-
-		return compositePixels;
+		return true;
 	}
 
 	private byte[] GenerateTextureData(
@@ -431,58 +340,16 @@ internal sealed unsafe class TtfFont : IFont {
 		out int outputWidth,
 		out int outputHeight
 	) {
-
 		(float textR, float textG, float textB, float textA) = DecomposeRgba( textColour );
 		(float outR, float outG, float outB, float outA) = DecomposeRgba( outlineColour );
 
 		outlineThickness = Math.Max( 0, outlineThickness );
 
-		ShapeText( text );
-
-		ReadOnlySpan<GlyphInfo> infos = _buffer.GetGlyphInfoSpan();
-		ReadOnlySpan<GlyphPosition> positions = _buffer.GetGlyphPositionSpan();
-		int glyphCount = _buffer.Length;
-
-		_renderedGlyphs.Clear();
-		float penX = 0f, penY = 0f;
-
-		// Pad the structural bounds calculation by the thickness of the outline
-		float minX = float.MaxValue, minY = float.MaxValue;
-		float maxX = float.MinValue, maxY = float.MinValue;
-
-		for( int i = 0; i < glyphCount; i++ ) {
-			uint glyphId = infos[i].Codepoint;
-			GlyphMetrics glyph = GetOrCacheGlyph( glyphId );
-
-			float hbXOffset = positions[i].XOffset / 64.0f;
-			float hbYOffset = positions[i].YOffset / 64.0f;
-			float hbXAdvance = positions[i].XAdvance / 64.0f;
-			float hbYAdvance = positions[i].YAdvance / 64.0f;
-
-			float xPos = penX + glyph.XOffset + hbXOffset;
-			float yPos = penY + glyph.YOffset + hbYOffset;
-
-			if( glyph.Width > 0 && glyph.Height > 0 ) {
-				_renderedGlyphs.Add( (glyph, new Vector2( xPos, yPos )) );
-
-				// The bounding box must expand to account for the stroke spreading outward
-				minX = Math.Min( minX, xPos - outlineThickness );
-				minY = Math.Min( minY, yPos - outlineThickness );
-				maxX = Math.Max( maxX, xPos + glyph.Width + outlineThickness );
-				maxY = Math.Max( maxY, yPos + glyph.Height + outlineThickness );
-			}
-			penX += hbXAdvance;
-			penY += hbYAdvance;
-		}
-
-		if( _renderedGlyphs.Count == 0 ) {
-			outputWidth = 0;
-			outputHeight = 0;
+		// Shape + lay out the glyphs; the bounds are padded by the outline thickness.
+		if( !LayoutGlyphs( text, outlineThickness, out outputWidth, out outputHeight, out float minX, out float minY ) ) {
 			return [];
 		}
 
-		outputWidth = (int)Math.Ceiling( maxX - minX );
-		outputHeight = (int)Math.Ceiling( maxY - minY );
 		byte[] compositePixels = RentCompositeBuffer( outputWidth * outputHeight * 4 );
 
 		// 3. Composite Blitting Loop

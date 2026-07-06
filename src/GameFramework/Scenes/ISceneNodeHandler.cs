@@ -1,0 +1,15 @@
+﻿namespace GameFramework.Scenes;
+
+public interface ISceneNodeHandler {
+	// Default implementations for actions require no code block body
+	void OnMousePressed( SceneNode node, int button ) { }
+	void OnMouseReleased( SceneNode node, int button ) { }
+	void OnMouseMoved( SceneNode node, Coordinate coordinate ) { }
+	void OnMouseEntered( SceneNode node ) { }
+	void OnMouseExited( SceneNode node ) { }
+
+	// Default implementations for functions return the original baseline state
+	bool OnMouseDown( SceneNode node, Coordinate coordinate, int button, bool isHandled ) => false;
+	bool OnMouseUp( SceneNode node, Coordinate coordinate, int button, bool isHandled ) => false;
+	bool OnMouseMove( SceneNode node, Coordinate coordinate, bool isHandled ) => false;
+}

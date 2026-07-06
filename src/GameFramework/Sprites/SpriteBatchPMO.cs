@@ -1,5 +1,4 @@
-﻿using System.Numerics;
-using System.Runtime.CompilerServices;
+﻿using System.Runtime.CompilerServices;
 using GameFramework.Textures;
 using Silk.NET.OpenGL;
 
@@ -94,8 +93,8 @@ internal unsafe sealed class SpriteBatchPMO : ISpriteBatch {
 			_gl.BufferData( BufferTargetARB.ElementArrayBuffer, (nuint)( indices.Length * sizeof( ushort ) ), ptr, BufferUsageARB.StaticDraw );
 		}
 
-        _gl.BindBuffer( BufferTargetARB.ElementArrayBuffer, 0 );
-        _gl.BindVertexArray( 0 );
+		_gl.BindBuffer( BufferTargetARB.ElementArrayBuffer, 0 );
+		_gl.BindVertexArray( 0 );
 	}
 
 	void ISpriteBatch.Start(
@@ -110,7 +109,7 @@ internal unsafe sealed class SpriteBatchPMO : ISpriteBatch {
 
 		SyncCurrentSegment();
 
-		_shader.Bind( renderTarget, TEXTURE_UNIT_0 );
+		_shader.Bind( renderTarget );
 		texture.Bind( TEXTURE_UNIT_0 );
 		_gl.BindVertexArray( _vao );
 
@@ -211,29 +210,29 @@ internal unsafe sealed class SpriteBatchPMO : ISpriteBatch {
 		float sin = MathF.Sin( rotation );
 
 		// Top-Left
-		basePtr[0].X = pivotX + ( (left * cos) - (top * sin) );
-		basePtr[0].Y = pivotY + ( (left * sin) + (top * cos) );
+		basePtr[0].X = pivotX + ( ( left * cos ) - ( top * sin ) );
+		basePtr[0].Y = pivotY + ( ( left * sin ) + ( top * cos ) );
 		basePtr[0].U = u1;
 		basePtr[0].V = v1;
 		basePtr[0].Color = colour;
 
 		// Bottom-Left
-		basePtr[1].X = pivotX + ( (left * cos) - (bottom * sin) );
-		basePtr[1].Y = pivotY + ( (left * sin) + (bottom * cos) );
+		basePtr[1].X = pivotX + ( ( left * cos ) - ( bottom * sin ) );
+		basePtr[1].Y = pivotY + ( ( left * sin ) + ( bottom * cos ) );
 		basePtr[1].U = u1;
 		basePtr[1].V = v2;
 		basePtr[1].Color = colour;
 
 		// Bottom-Right
-		basePtr[2].X = pivotX + ( (right * cos) - (bottom * sin) );
-		basePtr[2].Y = pivotY + ( (right * sin) + (bottom * cos) );
+		basePtr[2].X = pivotX + ( ( right * cos ) - ( bottom * sin ) );
+		basePtr[2].Y = pivotY + ( ( right * sin ) + ( bottom * cos ) );
 		basePtr[2].U = u2;
 		basePtr[2].V = v2;
 		basePtr[2].Color = colour;
 
 		// Top-Right
-		basePtr[3].X = pivotX + ( (right * cos) - (top * sin) );
-		basePtr[3].Y = pivotY + ( (right * sin) + (top * cos) );
+		basePtr[3].X = pivotX + ( ( right * cos ) - ( top * sin ) );
+		basePtr[3].Y = pivotY + ( ( right * sin ) + ( top * cos ) );
 		basePtr[3].U = u2;
 		basePtr[3].V = v1;
 		basePtr[3].Color = colour;

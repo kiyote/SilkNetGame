@@ -1,13 +1,12 @@
 ﻿using Silk.NET.OpenGL;
 using StbImageSharp;
-using System.Runtime.InteropServices;
 
 namespace GameFramework.Textures;
 
 internal sealed class Texture : ITexture {
 	private readonly GL _gl;
-	private readonly uint _width;
-	private readonly uint _height;
+	private readonly int _width;
+	private readonly int _height;
 
 	private uint _id;
 	private bool _isDisposed;
@@ -15,8 +14,12 @@ internal sealed class Texture : ITexture {
 	internal Texture(
 		GL gl,
 		string textureFile,
-		bool premultiplyAlpha = true
+		bool premultiplyAlpha = true,
+		TextureFilter filter = TextureFilter.Linear
 	) {
+		if (filter == TextureFilter.Unknown) {
+			throw new ArgumentException( "Specify a value texture filter", nameof( filter ) );
+		}
 		_gl = gl;
 
 		ImageResult image = ImageLoader.Load(
@@ -24,8 +27,8 @@ internal sealed class Texture : ITexture {
 			premultiplyAlpha
 		);
 
-		_width = (uint)image.Width;
-		_height = (uint)image.Height;
+		_width = image.Width;
+		_height = image.Height;
 
 		_id = _gl.GenTexture();
 		_gl.ActiveTexture( TextureUnit.Texture0 );
@@ -50,17 +53,22 @@ internal sealed class Texture : ITexture {
 
 		_gl.TexParameter( TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)TextureWrapMode.ClampToEdge );
 		_gl.TexParameter( TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)TextureWrapMode.ClampToEdge );
-		_gl.TexParameter( TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Nearest );
-		_gl.TexParameter( TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Nearest );
+		_gl.TexParameter( TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)filter );
+		_gl.TexParameter( TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)filter );
 
 		_gl.BindTexture( TextureTarget.Texture2D, 0 );	
 	}
 
 	internal Texture(
 		GL gl,
-		uint width,
-		uint height
+		int width,
+		int height,
+		TextureFilter filter
 	) {
+		if( filter == TextureFilter.Unknown ) {
+			throw new ArgumentException( "Specify a value texture filter", nameof( filter ) );
+		}
+
 		_width = width;
 		_height = height;
 		uint texture = gl.GenTexture();
@@ -73,8 +81,8 @@ internal sealed class Texture : ITexture {
 				TextureTarget.Texture2D,
 				0,
 				InternalFormat.Rgba8,
-				width,
-				height,
+				(uint)width,
+				(uint)height,
 				0,
 				PixelFormat.Rgba,
 				PixelType.UnsignedByte,
@@ -84,8 +92,8 @@ internal sealed class Texture : ITexture {
 
 		gl.TexParameter( TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)TextureWrapMode.ClampToEdge );
 		gl.TexParameter( TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)TextureWrapMode.ClampToEdge );
-		gl.TexParameter( TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Nearest );
-		gl.TexParameter( TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Nearest );
+		gl.TexParameter( TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)filter );
+		gl.TexParameter( TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)filter );
 
 		gl.BindTexture( TextureTarget.Texture2D, 0 );
 
@@ -96,9 +104,9 @@ internal sealed class Texture : ITexture {
 
 	uint ITexture.Id => _id;
 
-	uint ITexture.TextureWidth => _width;
+	int ITexture.TextureWidth => _width;
 
-	uint ITexture.TextureHeight => _height;
+	int ITexture.TextureHeight => _height;
 
 	void ITexture.Bind(
 		int textureUnit

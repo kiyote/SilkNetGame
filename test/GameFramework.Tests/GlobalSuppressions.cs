@@ -6,3 +6,4 @@
 using System.Diagnostics.CodeAnalysis;
 
 [assembly: SuppressMessage( "Naming", "CA1707:Identifiers should not contain underscores", Justification = "Test names are Method_Condition_Expectation", Scope = "module" )]
+[assembly: SuppressMessage( "Style", "IDE0130:Namespace does not match folder structure", Justification = "Using same namespace plus .Tests", Scope = "module" )]

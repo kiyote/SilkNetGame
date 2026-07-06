@@ -1,8 +1,7 @@
-﻿using GameFramework.Fonts;
-using Silk.NET.OpenGL;
+﻿using Silk.NET.OpenGL;
 using Silk.NET.Windowing;
 
-namespace GameFramework.Tests;
+namespace GameFramework.Fonts.Tests;
 
 internal sealed class TtfFontTests {
 

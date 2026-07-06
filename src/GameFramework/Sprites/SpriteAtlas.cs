@@ -12,6 +12,8 @@ internal sealed class SpriteAtlas : ISpriteAtlas {
 	private readonly ITexture _texture;
 	private readonly ISpriteBatch _spriteBatch;
 
+	ITexture ISpriteAtlas.Texture => _texture;
+
 	public SpriteAtlas(
 		GL gl,
 		ITexture texture,

@@ -154,4 +154,6 @@ public interface ISpriteAtlas: IDisposable {
 		uint outlineColour = 0x000000FF,
 		int outlineWidth = 1
 	);
+
+	ITexture Texture { get; }
 }

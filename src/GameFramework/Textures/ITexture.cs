@@ -1,8 +1,8 @@
 ﻿namespace GameFramework.Textures;
 
 public interface ITexture: IDisposable {
-	uint TextureWidth { get; }
-	uint TextureHeight { get; }
+	int TextureWidth { get; }
+	int TextureHeight { get; }
 	uint Id { get; }
 
 	void Bind( int textureUnit = 0 );

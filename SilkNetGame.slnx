@@ -7,6 +7,7 @@
     <File Path="LICENSE" />
   </Folder>
   <Folder Name="/src/">
+    <Project Path="src/GameFramework.Debug/GameFramework.Debug.csproj" Id="eedf932f-e2bb-4488-897c-fcddfdec7608" />
     <Project Path="src/GameFramework/GameFramework.csproj" Id="d1159301-26f5-4a78-ae8b-708d3a475b69" />
     <Project Path="src/SilkNetGame/SilkNetGame.csproj" />
   </Folder>

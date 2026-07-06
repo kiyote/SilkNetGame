@@ -1,0 +1,17 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+		<RootNamespace>GameFramework</RootNamespace>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Silk.NET.OpenGL" />
+		<PackageReference Include="StbImageWriteSharp" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <ProjectReference Include="..\GameFramework\GameFramework.csproj" />
+	</ItemGroup>
+
+</Project>

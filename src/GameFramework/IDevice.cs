@@ -11,8 +11,9 @@ public interface IDevice {
 	);
 
 	IFramebuffer CreateFramebuffer(
-		uint width,
-		uint height
+		int width,
+		int height,
+		TextureFilter filter = TextureFilter.Nearest
 	);
 
 	void Terminate();
@@ -24,7 +25,8 @@ public interface IDevice {
 
 	ITexture LoadTexture(
 		string textureFile,
-		bool premultiplyAlpha = true
+		bool premultiplyAlpha = true,
+		TextureFilter filter = TextureFilter.Linear
 	);
 
 	ISpriteAtlas CreateSpriteAtlas(

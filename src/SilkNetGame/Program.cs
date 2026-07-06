@@ -28,6 +28,7 @@ internal static class Program {
 			.ConfigureServices( services => {
 				services.AddSingleton( configuration );
 				services.AddGame<MyGame>();
+				//services.AddGameFrameworkDebug();
 			} )
 			.Run();
 	}

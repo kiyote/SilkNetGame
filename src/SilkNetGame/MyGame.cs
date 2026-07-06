@@ -9,28 +9,53 @@ namespace SilkNetGame;
 
 internal sealed class MyGame : GameBase, IKeyHandler {
 
+	private const float ScaleFactor = 3.0f;
 	private readonly IDevice _device;
 	private readonly IDisplay _display;
 	private readonly Keyboard _keyboard;
 	private readonly IFont _font;
-	private readonly ISpriteAtlas _atlas;
-	private readonly Rectangle _clip;
+	//private readonly ISpriteAtlas _atlas;
+	//private readonly Rectangle _clip;
+	//private readonly TextureDebug _textureDebug;
+	private readonly ISpriteBatch _spriteBatch;
+	private readonly ISpriteAtlas _textBuffer;
+
+	private readonly IFramebuffer _surface;
+	private readonly float _scaledWidth;
+	private readonly float _scaledHeight;
 
 	public MyGame(
 		IDevice device,
 		IDisplay display,
 		ISpriteBatch spriteBatch,
 		Keyboard keyboard
+		//TextureDebug textureDebug
 	) {
 		_device = device;
 		_display = display;
+		_spriteBatch = spriteBatch;
 		_keyboard = keyboard;
+		//_textureDebug = textureDebug;
 
 		_keyboard.AddHandler( this );
-		ITexture terrain = _device.LoadTexture( "terrain.png" );
 
 		_font = device.LoadTtfFont( "Roboto_Condensed-Medium.ttf", 24 );
 
+		int scaledHeight = (int)Math.Ceiling( display.Height / ScaleFactor );
+		int scaledWidth = (int)Math.Ceiling( display.Width / ScaleFactor );
+		_scaledWidth = scaledWidth * ScaleFactor;
+		_scaledHeight = scaledHeight * ScaleFactor;
+		_surface = device.CreateFramebuffer( scaledWidth, scaledHeight, TextureFilter.Nearest );
+
+		_textBuffer = device.CreateSpriteAtlas(
+			device.CreateFramebuffer( 1024, 1024, TextureFilter.Linear ),
+			spriteBatch
+		);
+
+		_textBuffer.Add( "hello", _font, "Scaling test!", 0xFFFFFFFF, 0x0F0F0FFF, 1 );
+
+		/*
+		ITexture terrain = _device.LoadTexture( "terrain.png" );
 		_atlas = device.CreateSpriteAtlas(
 			device.CreateFramebuffer( 1024, 1024 ),
 			spriteBatch
@@ -42,6 +67,7 @@ internal sealed class MyGame : GameBase, IKeyHandler {
 		_clip = new Rectangle( 75, 75, 300, 300 );
 
 		terrain.Dispose();
+		*/
 	}
 
 	public bool KeyDown(
@@ -54,13 +80,13 @@ internal sealed class MyGame : GameBase, IKeyHandler {
 		Key key
 	) {
 		if( key == Key.Escape ) {
+			//_textureDebug.Write( _surface, "surface.png" );
 			_device.Terminate();
 			return true;
 		}
 		return false;
 	}
 
-	private float _oldRotation = -1.0f;
 	private float _rotation;
 
 	public override void Render(
@@ -68,13 +94,24 @@ internal sealed class MyGame : GameBase, IKeyHandler {
 	) {
 		_display.Clear( Color.CornflowerBlue );
 
+		_surface.Clear( Color.Black );
+
+		_textBuffer.Start( _surface );
+		_textBuffer.Draw( "hello", (_surface.Width / 2), (_surface.Height / 2), _rotation );
+		_textBuffer.Finish();
+
+		// Copy the final surface to the display, scaling it up by the ScaleFactor
+		_spriteBatch.Start( _display, _surface );
+		_spriteBatch.Draw( 0.0f, 0.0f, _scaledWidth, _scaledHeight, 0.0f, 0.0f, 1.0f, 1.0f, 0xFFFFFFFF );
+		_spriteBatch.Finish();
+
+		/*
 		if (_oldRotation != _rotation) {
 			_oldRotation = _rotation;
 			string formattedRotation = _rotation.ToString( "F5", System.Globalization.CultureInfo.InvariantCulture );
 			_atlas.Update( "hello", _font, formattedRotation, 0xFFFFFFFF, 0x000000FF, 1 );
 		}
 
-		//_display.SetClip( _clip );
 		_atlas.Start( _display );
 		_atlas.Draw( "tall_grass", 100, 100 );
 		_atlas.Draw( "tall_grass", 200, 100, 96 * 2, 96 * 2 );
@@ -82,7 +119,7 @@ internal sealed class MyGame : GameBase, IKeyHandler {
 		_atlas.Draw( "tall_grass", 700, 100, 96 * 4, 96 * 4 );
 		_atlas.Draw( "hello", 75, 75, _rotation );
 		_atlas.Finish();
-		//_display.ClearClip();
+		*/
 	}
 
 	public override void Update(
@@ -90,11 +127,15 @@ internal sealed class MyGame : GameBase, IKeyHandler {
 	) {
 		_rotation += (float)(180.0 * deltaTime) * (MathF.PI / 180f);
 		_rotation %= 360f;
-		_rotation = MathF.Round( _rotation, 5 );
 	}
 
 	public override void Dispose() {
+		/*
 		_atlas.Dispose();
+		_font.Dispose();
+		*/
+		_surface.Dispose();
+		_textBuffer.Dispose();
 		_font.Dispose();
 	}
 }

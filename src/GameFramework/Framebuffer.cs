@@ -8,8 +8,8 @@ namespace GameFramework;
 internal sealed class Framebuffer : IFramebuffer {
 	private readonly GL _gl;
 	private readonly Matrix4x4 _projection;
-	private readonly uint _width;
-	private readonly uint _height;
+	private readonly int _width;
+	private readonly int _height;
 	private readonly uint _framebuffer;
 	private readonly ITexture _texture;
 
@@ -18,14 +18,15 @@ internal sealed class Framebuffer : IFramebuffer {
 
 	public Framebuffer(
 		GL gl,
-		uint width,
-		uint height
+		int width,
+		int height,
+		TextureFilter filter
 	) {
 		_gl = gl;
 		_width = width;
 		_height = height;
 
-		_texture = new Textures.Texture( gl, width, height );
+		_texture = new Textures.Texture( gl, width, height, filter );
 
 		_framebuffer = _gl.GenFramebuffer();
 		_gl.BindFramebuffer( FramebufferTarget.Framebuffer, _framebuffer );
@@ -71,9 +72,9 @@ internal sealed class Framebuffer : IFramebuffer {
 
 	Matrix4x4 IRenderTarget.Projection => _projection;
 
-	uint IRenderTarget.Width => _width;
+	int IRenderTarget.Width => _width;
 
-	uint IRenderTarget.Height => _height;
+	int IRenderTarget.Height => _height;
 
 	void IRenderTarget.Bind() {
 		DoBind();
@@ -114,9 +115,9 @@ internal sealed class Framebuffer : IFramebuffer {
 		}
 	}
 
-	uint ITexture.TextureWidth => _texture.TextureWidth;
+	int ITexture.TextureWidth => _texture.TextureWidth;
 
-	uint ITexture.TextureHeight => _texture.TextureHeight;
+	int ITexture.TextureHeight => _texture.TextureHeight;
 
 	uint ITexture.Id => _texture.Id;
 
@@ -139,7 +140,7 @@ internal sealed class Framebuffer : IFramebuffer {
 
 	private void DoBind() {
 		_gl.BindFramebuffer( FramebufferTarget.Framebuffer, _framebuffer );
-		_gl.Viewport( 0, 0, _width, _height );
+		_gl.Viewport( 0, 0, (uint)_width, (uint)_height );
 		ApplyClip();
 	}
 

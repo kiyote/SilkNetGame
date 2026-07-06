@@ -1,5 +1,4 @@
-﻿using System.IO;
-using StbImageSharp;
+﻿using StbImageSharp;
 
 namespace GameFramework;
 
@@ -9,22 +8,22 @@ internal static class ImageLoader {
 		string filePath,
 		bool premultiplyAlpha
 	) {
-		string resolvedPath = ResolveAssetPath( filePath );
 
 		if( !premultiplyAlpha ) {
-			using FileStream stream = File.OpenRead( resolvedPath );
+			using FileStream stream = File.OpenRead( filePath );
 			ImageResult image = ImageResult.FromStream( stream, ColorComponents.RedGreenBlueAlpha );
 			return image;
 		}
 
-		return LoadPremultiplied( resolvedPath );
+		return LoadPremultiplied( filePath );
 	}
 
-	private static ImageResult LoadPremultiplied( string filePath ) {
-		string resolvedPath = ResolveAssetPath( filePath );
+	private static ImageResult LoadPremultiplied(
+		string filePath
+	) {
 
 		// 1. Force StbImageSharp to load the image as 4-channel RGBA
-		using FileStream stream = File.OpenRead( resolvedPath );
+		using FileStream stream = File.OpenRead( filePath );
 		ImageResult image = ImageResult.FromStream( stream, ColorComponents.RedGreenBlueAlpha );
 
 		// 2. Safely obtain a span or reference to the raw byte data
@@ -47,22 +46,5 @@ internal static class ImageLoader {
 		}
 
 		return image;
-	}
-
-	public static string ResolveAssetPath( string filePath ) {
-		if( Path.IsPathRooted( filePath ) ) {
-			return filePath;
-		}
-
-		string baseCandidate = Path.Combine( AppContext.BaseDirectory, filePath );
-		if( File.Exists( baseCandidate ) ) {
-			return baseCandidate;
-		}
-
-		if( File.Exists( filePath ) ) {
-			return Path.GetFullPath( filePath );
-		}
-
-		return filePath;
 	}
 }

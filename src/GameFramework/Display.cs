@@ -11,8 +11,8 @@ internal sealed class Display : IDisplay {
 
 	private readonly IWindow _window;
 	private readonly GL _gl;
-	private uint _width;
-	private uint _height;
+	private int _width;
+	private int _height;
 	private Matrix4x4 _projection;
 	private Rectangle? _clip;
 
@@ -26,7 +26,7 @@ internal sealed class Display : IDisplay {
 		_window = window;
 		_window.FramebufferResize += FramebufferResize;
 
-		SetSize( (uint)width, (uint)height );
+		SetSize( width, height );
 	}
 
 	void IRenderTarget.Clear(
@@ -78,13 +78,13 @@ internal sealed class Display : IDisplay {
 
 	Matrix4x4 IRenderTarget.Projection => _projection;
 
-	uint IRenderTarget.Width => _width;
+	int IRenderTarget.Width => _width;
 
-	uint IRenderTarget.Height => _height;
+	int IRenderTarget.Height => _height;
 
 	private void DoBind() {
 		_gl.BindFramebuffer( FramebufferTarget.Framebuffer, 0 );
-		_gl.Viewport( 0, 0, _width, _height );
+		_gl.Viewport( 0, 0, (uint)_width, (uint)_height );
 		ApplyClip();
 	}
 
@@ -108,16 +108,16 @@ internal sealed class Display : IDisplay {
 	private void FramebufferResize(
 		Vector2D<int> size
 	) {
-		SetSize( (uint)size.X, (uint)size.Y );
+		SetSize( size.X, size.Y );
 	}
 
 	private void SetSize(
-		uint width,
-		uint height
+		int width,
+		int height
 	) {
 		_width = width;
 		_height = height;
-		_gl.Viewport( 0, 0, _width, _height );
+		_gl.Viewport( 0, 0, (uint)_width, (uint)_height );
 		_projection = Matrix4x4.CreateOrthographicOffCenter(
 			left: 0.0f,
 			right: width,

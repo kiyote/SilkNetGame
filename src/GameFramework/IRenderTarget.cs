@@ -7,9 +7,9 @@ public interface IRenderTarget : IDisposable {
 
 	Matrix4x4 Projection { get; }
 
-	uint Width { get; }
+	int Width { get; }
 
-	uint Height { get; }
+	int Height { get; }
 
 	void Clear(
 		Color colour
