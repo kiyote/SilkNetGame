@@ -5,7 +5,7 @@ namespace GameFramework.Sprites;
 
 
 public interface ISpriteBatch : IDisposable {
-	void Start( IRenderTarget renderTarget, ITexture texture );
+	void Start( IRenderTarget renderTarget, ITexture texture, BlendMode blendMode = BlendMode.Premultiplied );
 	void Finish();
 
 	// Methods that perform actual drawing

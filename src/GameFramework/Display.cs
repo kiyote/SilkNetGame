@@ -1,5 +1,6 @@
 ﻿using System.Drawing;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using Silk.NET.Maths;
 using Silk.NET.OpenGL;
 using Silk.NET.Windowing;
@@ -37,6 +38,15 @@ internal sealed class Display : IDisplay {
 		_gl.Clear( ClearBufferMask.ColorBufferBit );
 	}
 
+	void IRenderTarget.Clear(
+		uint colour
+	) {
+		DoBind();
+		(float R, float G, float B, float A) = DecomposeRgba( colour );
+		_gl.ClearColor( R, G, B, A );
+		_gl.Clear( ClearBufferMask.ColorBufferBit );
+	}
+
 	void IRenderTarget.Bind() {
 		DoBind();
 	}
@@ -56,7 +66,7 @@ internal sealed class Display : IDisplay {
 		int w,
 		int h
 	) {
-		if (_clip is null
+		if( _clip is null
 			|| _clip.Value.X != x
 			|| _clip.Value.Y != y
 			|| _clip.Value.Width != w
@@ -125,6 +135,17 @@ internal sealed class Display : IDisplay {
 			top: 0.0f,
 			zNearPlane: -1.0f,
 			zFarPlane: 1.0f
+		);
+	}
+
+	[MethodImpl( MethodImplOptions.AggressiveInlining )]
+	private static (float R, float G, float B, float A) DecomposeRgba( uint rgba ) {
+		const float ToFloat = 1.0f / 255.0f;
+		return (
+			( ( rgba >> 24 ) & 0xFF ) * ToFloat,
+			( ( rgba >> 16 ) & 0xFF ) * ToFloat,
+			( ( rgba >> 8 ) & 0xFF ) * ToFloat,
+			( rgba & 0xFF ) * ToFloat
 		);
 	}
 

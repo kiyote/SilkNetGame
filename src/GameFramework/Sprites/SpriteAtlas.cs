@@ -22,7 +22,7 @@ internal sealed class SpriteAtlas : ISpriteAtlas {
 		_gl = gl;
 		_texture = texture;
 		_spriteBatch = spriteBatch;
-		_cache = new SpriteCache( (int)texture.TextureWidth, (int)texture.TextureHeight );
+		_cache = new SpriteCache( texture.TextureWidth, texture.TextureHeight );
 		_transparentBlack = [0.0f, 0.0f, 0.0f, 0.0f];
 	}
 
@@ -71,13 +71,13 @@ internal sealed class SpriteAtlas : ISpriteAtlas {
 	}
 
 	void ISpriteAtlas.Update(
-        string id,
-        IFont font,
-        ReadOnlySpan<byte> text,
-        uint colour
-    ) {
+		string id,
+		IFont font,
+		ReadOnlySpan<byte> text,
+		uint colour
+	) {
 		DoUpdate( id, font, text, colour );
-    }
+	}
 
 	private void DoUpdate(
 		string id,
@@ -95,16 +95,16 @@ internal sealed class SpriteAtlas : ISpriteAtlas {
 	}
 
 	void ISpriteAtlas.Update(
-        string id,
-        IFont font,
-        ReadOnlySpan<byte> text,
-        uint textColour,
-        uint outlineColour,
-        int outlineWidth
-    ) {
+		string id,
+		IFont font,
+		ReadOnlySpan<byte> text,
+		uint textColour,
+		uint outlineColour,
+		int outlineWidth
+	) {
 		DoUpdate( id, font, text, textColour, outlineColour, outlineWidth );
-		
-    }
+
+	}
 
 	private void DoUpdate(
 		string id,
@@ -349,6 +349,17 @@ internal sealed class SpriteAtlas : ISpriteAtlas {
 			}
 		}
 	}
+
+	void ISpriteAtlas.Measure(
+		string id,
+		out int width,
+		out int height
+	) {
+		CachedSprite sprite = _cache[id];
+		width = sprite.Sprite.Width;
+		height = sprite.Sprite.Height;
+	}
+
 
 	void IDisposable.Dispose() {
 		_texture.Dispose();

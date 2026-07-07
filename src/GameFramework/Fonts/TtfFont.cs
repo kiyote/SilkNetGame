@@ -40,7 +40,7 @@ internal sealed unsafe class TtfFont : IFont {
 	public TtfFont(
 		GL gl,
 		string fontPath,
-		float fontSize
+		float fontHeightInPixels
 	) {
 		_gl = gl;
 		_fontData = File.ReadAllBytes( fontPath );
@@ -52,13 +52,15 @@ internal sealed unsafe class TtfFont : IFont {
 				throw new InvalidOperationException( "Failed to initialize font data." );
 			}
 		}
-		_scale = StbTrueType.stbtt_ScaleForPixelHeight( _fontInfo, fontSize );
+		_scale = StbTrueType.stbtt_ScaleForMappingEmToPixels( _fontInfo, fontHeightInPixels );
 
 		MemoryStream ms = new MemoryStream( _fontData );
 		_blob = Blob.FromStream( ms );
 		_face = new Face( _blob, 0 );
 		_font = new Font( _face );
-		_font.SetScale( (int)( fontSize * 64 ), (int)( fontSize * 64 ) );
+
+		int hbScale = (int)MathF.Round( _scale * _face.UnitsPerEm * 64.0f );
+		_font.SetScale( hbScale, hbScale );
 	}
 
 	private void ShapeText(
@@ -229,20 +231,26 @@ internal sealed unsafe class TtfFont : IFont {
 		uint outlineColour = 0x000000FF,
 		int outlineThickness = 1
 	) {
-		int maxBytes = Encoding.UTF8.GetMaxByteCount( text.Length );
-
-		if( maxBytes <= MaxStackTextBytes ) {
+		// Check if the string length itself safely fits in the stack allocation.
+		// Since 1 char is at most 4 UTF-8 bytes, text.Length * 4 is a safe boundary.
+		if( text.Length * 4 <= MaxStackTextBytes ) {
 			Span<byte> buffer = stackalloc byte[MaxStackTextBytes];
 			int written = Encoding.UTF8.GetBytes( text, buffer );
-			DrawOutlinedText( texture, buffer, x, y, textColour, outlineColour, outlineThickness );
+			DrawOutlinedText( texture, buffer[..written], x, y, textColour, outlineColour, outlineThickness );
 		} else {
+			// Only calculate the exact max bytes if we absolutely must fall back to the pool
+			int maxBytes = Encoding.UTF8.GetMaxByteCount( text.Length );
 			byte[] rented = ArrayPool<byte>.Shared.Rent( maxBytes );
+
+			// Explicitly casting the array to Span ensures the [..written] syntax remains a cheap slice
 			Span<byte> buffer = rented;
 			int written = Encoding.UTF8.GetBytes( text, buffer );
-			DrawOutlinedText( texture, buffer, x, y, textColour, outlineColour, outlineThickness );
+
+			DrawOutlinedText( texture, buffer[..written], x, y, textColour, outlineColour, outlineThickness );
 			ArrayPool<byte>.Shared.Return( rented );
 		}
 	}
+
 
 	public void MeasureText(
 		string text,
@@ -250,17 +258,21 @@ internal sealed unsafe class TtfFont : IFont {
 		out int width,
 		out int height
 	) {
-		int maxBytes = Encoding.UTF8.GetMaxByteCount( text.Length );
-
-		if( maxBytes <= MaxStackTextBytes ) {
+		// 1 char is at most 4 UTF-8 bytes. 
+		// Checking text.Length * 4 ensures the stack buffer will never overflow.
+		if( text.Length * 4 <= MaxStackTextBytes ) {
 			Span<byte> buffer = stackalloc byte[MaxStackTextBytes];
 			int written = Encoding.UTF8.GetBytes( text, buffer );
-			MeasureText( buffer, outlineWidth, out width, out height );
+			MeasureText( buffer[..written], outlineWidth, out width, out height );
 		} else {
+			// Fall back to the ArrayPool only for long strings
+			int maxBytes = Encoding.UTF8.GetMaxByteCount( text.Length );
 			byte[] rented = ArrayPool<byte>.Shared.Rent( maxBytes );
+
 			Span<byte> buffer = rented;
 			int written = Encoding.UTF8.GetBytes( text, buffer );
-			MeasureText( buffer, outlineWidth, out width, out height );
+			MeasureText( buffer[..written], outlineWidth, out width, out height );
+
 			ArrayPool<byte>.Shared.Return( rented );
 		}
 	}

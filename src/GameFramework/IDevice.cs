@@ -20,7 +20,7 @@ public interface IDevice {
 
 	IFont LoadTtfFont(
 		string fontFile,
-		float fontSize
+		int fontHeightInPixels
 	);
 
 	ITexture LoadTexture(

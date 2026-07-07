@@ -2,16 +2,29 @@
 
 internal sealed class TestingNodeHandler : ISceneNodeHandler {
 
-	public void OnMousePressed( SceneNode node, int button ) {
+	public void OnMousePressed(
+		SceneNode node,
+		int button
+	) {
 		WasMousePressedCalled = true;
 	}
 
-	public bool OnMouseUp( SceneNode node, Coordinate coordinate, int button, bool isHandled ) {
+	public bool OnMouseUp(
+		SceneNode node,
+		Coordinate coordinate,
+		int button,
+		bool isHandled
+	) {
 		WasMouseUpCalled = true;
 		return true;
 	}
 
-	public bool OnMouseDown( SceneNode node, Coordinate coordinate, int button, bool isHandled ) {
+	public bool OnMouseDown(
+		SceneNode node,
+		Coordinate coordinate,
+		int button,
+		bool isHandled
+	) {
 		WasMouseDownCalled = true;
 		return true;
 	}

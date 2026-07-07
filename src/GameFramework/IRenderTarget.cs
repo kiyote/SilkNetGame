@@ -15,9 +15,10 @@ public interface IRenderTarget : IDisposable {
 		Color colour
 	);
 
-	// Restricts subsequent drawing to the supplied rectangle, expressed in this
-	// render target's own coordinate space. The clip is applied as a scissor
-	// rectangle every time Bind (or Clear) is called.
+	void Clear(
+		uint colour
+	);
+
 	void SetClip(
 		Rectangle clip
 	);
@@ -29,8 +30,6 @@ public interface IRenderTarget : IDisposable {
 		int h
 	);
 
-	// Removes any previously set clip so subsequent drawing covers the whole
-	// render target again. Takes effect on the next Bind.
 	void ClearClip();
 
 	void Bind();

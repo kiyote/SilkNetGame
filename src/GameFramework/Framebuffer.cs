@@ -1,5 +1,6 @@
 ﻿using System.Drawing;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using GameFramework.Textures;
 using Silk.NET.OpenGL;
 
@@ -67,6 +68,15 @@ internal sealed class Framebuffer : IFramebuffer {
 	) {
 		DoBind();
 		_gl.ClearColor( colour );
+		_gl.Clear( ClearBufferMask.ColorBufferBit );
+	}
+
+	void IRenderTarget.Clear(
+		uint colour
+	) {
+		DoBind();
+		(float R, float G, float B, float A) = DecomposeRgba( colour );
+		_gl.ClearColor( R, G, B, A );
 		_gl.Clear( ClearBufferMask.ColorBufferBit );
 	}
 
@@ -158,6 +168,17 @@ internal sealed class Framebuffer : IFramebuffer {
 	private bool IsBound() {
 		_gl.GetInteger( GLEnum.FramebufferBinding, out int bound );
 		return (uint)bound == _framebuffer;
+	}
+
+	[MethodImpl( MethodImplOptions.AggressiveInlining )]
+	private static (float R, float G, float B, float A) DecomposeRgba( uint rgba ) {
+		const float ToFloat = 1.0f / 255.0f;
+		return (
+			( ( rgba >> 24 ) & 0xFF ) * ToFloat,
+			( ( rgba >> 16 ) & 0xFF ) * ToFloat,
+			( ( rgba >> 8 ) & 0xFF ) * ToFloat,
+			( rgba & 0xFF ) * ToFloat
+		);
 	}
 
 	~Framebuffer() {

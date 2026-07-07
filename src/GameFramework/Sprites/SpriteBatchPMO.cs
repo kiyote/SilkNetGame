@@ -99,7 +99,8 @@ internal unsafe sealed class SpriteBatchPMO : ISpriteBatch {
 
 	void ISpriteBatch.Start(
 		IRenderTarget renderTarget,
-		ITexture texture
+		ITexture texture,
+		BlendMode blendMode
 	) {
 		if( _isBatching ) {
 			return;
@@ -113,8 +114,19 @@ internal unsafe sealed class SpriteBatchPMO : ISpriteBatch {
 		texture.Bind( TEXTURE_UNIT_0 );
 		_gl.BindVertexArray( _vao );
 
-		_gl.Enable( EnableCap.Blend );
-		_gl.BlendFunc( BlendingFactor.One, BlendingFactor.OneMinusSrcAlpha );
+		switch( blendMode ) {
+			case BlendMode.None:
+				_gl.Disable( EnableCap.Blend );
+				break;
+			case BlendMode.Premultiplied:
+				_gl.Enable( EnableCap.Blend );
+				_gl.BlendFunc( BlendingFactor.One, BlendingFactor.OneMinusSrcAlpha );
+				break;
+			case BlendMode.Additive:
+				_gl.Enable( EnableCap.Blend );
+				_gl.BlendFunc( BlendingFactor.One, BlendingFactor.One );
+				break;
+		}
 	}
 
 	void ISpriteBatch.Draw(

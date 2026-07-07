@@ -155,5 +155,7 @@ public interface ISpriteAtlas: IDisposable {
 		int outlineWidth = 1
 	);
 
+	void Measure( string id, out int width, out int height );
+
 	ITexture Texture { get; }
 }

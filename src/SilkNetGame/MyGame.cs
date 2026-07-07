@@ -1,5 +1,4 @@
-﻿using System.Drawing;
-using GameFramework;
+﻿using GameFramework;
 using GameFramework.Fonts;
 using GameFramework.Sprites;
 using GameFramework.Textures;
@@ -9,7 +8,7 @@ namespace SilkNetGame;
 
 internal sealed class MyGame : GameBase, IKeyHandler {
 
-	private const float ScaleFactor = 3.0f;
+	private const float ScaleFactor = 2.0f;
 	private readonly IDevice _device;
 	private readonly IDisplay _display;
 	private readonly Keyboard _keyboard;
@@ -39,7 +38,8 @@ internal sealed class MyGame : GameBase, IKeyHandler {
 
 		_keyboard.AddHandler( this );
 
-		_font = device.LoadTtfFont( "Roboto_Condensed-Medium.ttf", 24 );
+		//_font = device.LoadTtfFont( "Roboto_Condensed-Medium.ttf", 16 );
+		_font = device.LoadTtfFont( "m5x7.ttf", 16 );
 
 		int scaledHeight = (int)Math.Ceiling( display.Height / ScaleFactor );
 		int scaledWidth = (int)Math.Ceiling( display.Width / ScaleFactor );
@@ -52,7 +52,7 @@ internal sealed class MyGame : GameBase, IKeyHandler {
 			spriteBatch
 		);
 
-		_textBuffer.Add( "hello", _font, "Scaling test!", 0xFFFFFFFF, 0x0F0F0FFF, 1 );
+		_textBuffer.Add( "hello", _font, "Scaling test!", 0xFFFFFFFF, 0x707070FF, 1 );
 
 		/*
 		ITexture terrain = _device.LoadTexture( "terrain.png" );
@@ -92,15 +92,16 @@ internal sealed class MyGame : GameBase, IKeyHandler {
 	public override void Render(
 		double deltaTime
 	) {
-		_display.Clear( Color.CornflowerBlue );
 
-		_surface.Clear( Color.Black );
+		_surface.Clear( 0x000000FF );
 
+		_textBuffer.Measure( "hello", out int textWidth, out int textHeight );
 		_textBuffer.Start( _surface );
-		_textBuffer.Draw( "hello", (_surface.Width / 2), (_surface.Height / 2), _rotation );
+		_textBuffer.Draw( "hello", ( _surface.Width / 2 ) - (textWidth / 2), ( _surface.Height / 2 ) - (textHeight / 2) );
 		_textBuffer.Finish();
 
 		// Copy the final surface to the display, scaling it up by the ScaleFactor
+		_display.Clear( 0x6495EDFF );
 		_spriteBatch.Start( _display, _surface );
 		_spriteBatch.Draw( 0.0f, 0.0f, _scaledWidth, _scaledHeight, 0.0f, 0.0f, 1.0f, 1.0f, 0xFFFFFFFF );
 		_spriteBatch.Finish();
@@ -125,15 +126,11 @@ internal sealed class MyGame : GameBase, IKeyHandler {
 	public override void Update(
 		double deltaTime
 	) {
-		_rotation += (float)(180.0 * deltaTime) * (MathF.PI / 180f);
+		_rotation += (float)( 180.0 * deltaTime ) * ( MathF.PI / 180f );
 		_rotation %= 360f;
 	}
 
 	public override void Dispose() {
-		/*
-		_atlas.Dispose();
-		_font.Dispose();
-		*/
 		_surface.Dispose();
 		_textBuffer.Dispose();
 		_font.Dispose();

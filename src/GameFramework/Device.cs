@@ -2,6 +2,8 @@
 using GameFramework.Sprites;
 using GameFramework.Textures;
 using Microsoft.Extensions.DependencyInjection;
+using Silk.NET.Core.Contexts;
+using Silk.NET.GLFW;
 using Silk.NET.Input;
 using Silk.NET.Maths;
 using Silk.NET.OpenGL;
@@ -119,12 +121,12 @@ internal sealed class Device : IDevice {
 
 	IFont IDevice.LoadTtfFont(
 		string fontFile,
-		float fontSize
+		int fontHeightInPixels
 	) {
 		return new TtfFont(
 			_gl,
 			fontFile,
-			fontSize
+			fontHeightInPixels
 		);
 	}
 
