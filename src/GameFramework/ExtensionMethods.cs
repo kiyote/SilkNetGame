@@ -1,4 +1,5 @@
 ﻿using System.Drawing;
+using GameFramework.Animations;
 using Microsoft.Extensions.DependencyInjection;
 using Silk.NET.Core.Contexts;
 using Silk.NET.GLFW;
@@ -11,7 +12,10 @@ public static class ExtensionMethods {
 	public static IServiceCollection AddGame<T>(
 		this IServiceCollection services
 	) where T : GameBase {
-		return services.AddSingleton<GameBase, T>();
+		services.AddTweeningEngine();
+		_ = services.AddSingleton<GameBase, T>();
+
+		return services;
 	}
 
 }

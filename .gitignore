@@ -62,6 +62,7 @@ bin/
 obj/
 .generated/
 TestResult.xml
+TestResults/
 *.binlog
 Lms.sln
 Packages.g.props

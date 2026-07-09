@@ -2,8 +2,6 @@
 using GameFramework.Sprites;
 using GameFramework.Textures;
 using Microsoft.Extensions.DependencyInjection;
-using Silk.NET.Core.Contexts;
-using Silk.NET.GLFW;
 using Silk.NET.Input;
 using Silk.NET.Maths;
 using Silk.NET.OpenGL;
@@ -160,6 +158,7 @@ internal sealed class Device : IDevice {
 		serviceCollection.AddSingleton<IDevice>( this );
 		serviceCollection.AddSingleton<ISpriteBatch, SpriteBatchPMO>();
 		serviceCollection.AddSingleton<Keyboard>();
+		serviceCollection.AddSingleton<ITextureManager, TextureManager>();
 		_configureServices?.Invoke( serviceCollection );
 		_services = serviceCollection.BuildServiceProvider();
 		_configureServices = null;
@@ -175,5 +174,6 @@ internal sealed class Device : IDevice {
 		_game.Dispose();
 		_services?.GetRequiredService<ISpriteBatch>().Dispose();
 		_services?.GetRequiredService<Keyboard>().Dispose();
+		_services?.GetRequiredService<ITextureManager>().Dispose();
 	}
 }
