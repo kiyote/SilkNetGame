@@ -52,7 +52,7 @@ internal sealed class MyGame : GameBase, IKeyHandler {
 			spriteBatch
 		);
 
-		_textBuffer.Add( "hello", _font, "Scaling test!", 0xFFFFFFFF, 0x707070FF, 1 );
+		_textBuffer.Add( "hello", _font, "Scaled Text!"u8, 0xFFFFFFFF, 0x707070FF, 1 );
 
 		/*
 		ITexture terrain = _device.LoadTexture( "terrain.png" );

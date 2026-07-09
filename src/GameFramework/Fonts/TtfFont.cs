@@ -307,10 +307,10 @@ internal sealed unsafe class TtfFont : IFont {
 			GlyphMetrics glyph = GetOrCacheGlyph( glyphId );
 
 			// Convert fractional HarfBuzz metrics back to pixel space.
-			float hbXOffset = positions[i].XOffset / 64.0f;
-			float hbYOffset = positions[i].YOffset / 64.0f;
-			float hbXAdvance = positions[i].XAdvance / 64.0f;
-			float hbYAdvance = positions[i].YAdvance / 64.0f;
+			float hbXOffset = positions[i].XOffset / 64;
+			float hbYOffset = positions[i].YOffset / 64;
+			float hbXAdvance = positions[i].XAdvance / 64;
+			float hbYAdvance = positions[i].YAdvance / 64;
 
 			float xPos = penX + glyph.XOffset + hbXOffset;
 			float yPos = penY + glyph.YOffset + hbYOffset;
