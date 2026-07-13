@@ -93,6 +93,7 @@ internal sealed class Device : IDevice {
 		);
 	}
 
+/*
 	IFramebuffer IDevice.CreateFramebuffer(
 		int width,
 		int height,
@@ -105,7 +106,9 @@ internal sealed class Device : IDevice {
 			filter
 		);
 	}
+	*/
 
+/*
 	ISpriteAtlas IDevice.CreateSpriteAtlas(
 		ITexture texture,
 		ISpriteBatch spriteBatch
@@ -116,6 +119,7 @@ internal sealed class Device : IDevice {
 			spriteBatch
 		);
 	}
+	*/
 
 	IFont IDevice.LoadTtfFont(
 		string fontFile,

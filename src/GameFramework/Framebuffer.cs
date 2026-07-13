@@ -6,6 +6,7 @@ using Silk.NET.OpenGL;
 
 namespace GameFramework;
 
+/*
 internal sealed class Framebuffer : IFramebuffer {
 	private readonly GL _gl;
 	private readonly Matrix4x4 _projection;
@@ -181,9 +182,39 @@ internal sealed class Framebuffer : IFramebuffer {
 		);
 	}
 
+	public void Copy(
+		int x,
+		int y,
+		ITexture source,
+		int sourceX,
+		int sourceY,
+		int sourceWidth,
+		int sourceHeight
+	) {
+		_gl.CopyImageSubData(
+			srcName: source.Id,          // ID of the source texture
+			srcTarget: (GLEnum)TextureTarget.Texture2D, // Source target type
+			srcLevel: 0,                       // Source mipmap level
+			srcX: sourceX,                          // Starting X coordinate in source
+			srcY: sourceY,                          // Starting Y coordinate in source
+			srcZ: 0,                           // Starting Z coordinate (0 for 2D)
+
+			dstName: _texture.Id,            // ID of the destination texture
+			dstTarget: (GLEnum)TextureTarget.Texture2D, // Destination target type
+			dstLevel: 0,                       // Destination mipmap level
+			dstX: x,                         // Insertion X coordinate in destination
+			dstY: y,                         // Insertion Y coordinate in destination
+			dstZ: 0,                           // Insertion Z coordinate (0 for 2D)
+
+			srcWidth: (uint)sourceWidth,                     // Width of the portion to copy
+			srcHeight: (uint)sourceHeight,                    // Height of the portion to copy
+			srcDepth: 1                        // Depth of the portion to copy (1 for 2D)
+		);
+	}
+
 	~Framebuffer() {
 		if( !_isDisposed ) {
 			System.Diagnostics.Debug.Fail( "Framebuffer leaked. Dispose it on the render thread." );
 		}
 	}
-}
+}*/

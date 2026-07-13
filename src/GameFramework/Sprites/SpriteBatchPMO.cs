@@ -129,7 +129,7 @@ internal unsafe sealed class SpriteBatchPMO : ISpriteBatch {
 		}
 	}
 
-	void ISpriteBatch.Draw(
+	public void Draw(
 		float x,
 		float y,
 		float width,
@@ -187,7 +187,7 @@ internal unsafe sealed class SpriteBatchPMO : ISpriteBatch {
 		}
 	}
 
-	void ISpriteBatch.Draw(
+	public void Draw(
 		float x,
 		float y,
 		float width,
@@ -361,4 +361,44 @@ internal unsafe sealed class SpriteBatchPMO : ISpriteBatch {
 		}
 
 	}
+
+	void ISpriteBatch.Draw( float x, float y, float width, float height, ISubTexture subTexture, uint colour ) {
+		if (subTexture.Texture.Filter == TextureFilter.Linear) {
+			Draw( x, y, width, height, subTexture.U1 + subTexture.Texture.HalfX, subTexture.V1 + subTexture.Texture.HalfY, subTexture.U2 - subTexture.Texture.HalfX, subTexture.V2 - subTexture.Texture.HalfY, colour );
+		} else {
+			Draw( x, y, width, height, subTexture.U1, subTexture.V1, subTexture.U2, subTexture.V2, colour );
+		}
+	}
+
+	void ISpriteBatch.Draw( float x, float y, ISubTexture subTexture, uint colour ) {
+		if (subTexture.Texture.Filter == TextureFilter.Linear) {
+			Draw( x, y, subTexture.Width, subTexture.Height, subTexture.U1 + subTexture.Texture.HalfX, subTexture.V1 + subTexture.Texture.HalfY, subTexture.U2 - subTexture.Texture.HalfX, subTexture.V2 - subTexture.Texture.HalfY, colour );
+		} else {
+			Draw( x, y, subTexture.Width, subTexture.Height, subTexture.U1, subTexture.V1, subTexture.U2, subTexture.V2, colour );
+		}
+	}
+
+	void ISpriteBatch.Draw( float x, float y, float width, float height, ISubTexture subTexture, float rotation, uint colour ) {
+		if (subTexture.Texture.Filter == TextureFilter.Linear) {
+			Draw( x, y, width, height, subTexture.U1 + subTexture.Texture.HalfX, subTexture.V1 + subTexture.Texture.HalfY, subTexture.U2 - subTexture.Texture.HalfX, subTexture.V2 - subTexture.Texture.HalfY, rotation, width * 0.5f, height * 0.5f, colour );
+		} else {
+			Draw( x, y, width, height, subTexture.U1, subTexture.V1, subTexture.U2, subTexture.V2, rotation, width * 0.5f, height * 0.5f, colour );
+		}
+	}
+
+	void ISpriteBatch.Draw( float x, float y, ISubTexture subTexture, float rotation, uint colour ) {
+		if (subTexture.Texture.Filter == TextureFilter.Linear) {
+			Draw( x, y, subTexture.Width, subTexture.Height, subTexture.U1 + subTexture.Texture.HalfX, subTexture.V1 + subTexture.Texture.HalfY, subTexture.U2 - subTexture.Texture.HalfX, subTexture.V2 - subTexture.Texture.HalfY, rotation, subTexture.Width * 0.5f, subTexture.Height * 0.5f, colour );
+		} else {
+			Draw( x, y, subTexture.Width, subTexture.Height, subTexture.U1, subTexture.V1, subTexture.U2, subTexture.V2, rotation, subTexture.Width * 0.5f, subTexture.Height * 0.5f, colour );
+		}
+	}
+	void ISpriteBatch.Draw( float x, float y, float width, float height, ISubTexture subTexture, float rotation, float originX, float originY, uint colour ) {
+		if (subTexture.Texture.Filter == TextureFilter.Linear) {
+			Draw( x, y, width, height, subTexture.U1 + subTexture.Texture.HalfX, subTexture.V1 + subTexture.Texture.HalfY, subTexture.U2 - subTexture.Texture.HalfX, subTexture.V2 - subTexture.Texture.HalfY, rotation, originX, originY, colour );
+		} else {
+			Draw( x, y, width, height, subTexture.U1, subTexture.V1, subTexture.U2, subTexture.V2, rotation, originX, originY, colour );
+		}
+	}
+
 }

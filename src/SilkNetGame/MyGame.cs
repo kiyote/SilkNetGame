@@ -8,7 +8,7 @@ namespace SilkNetGame;
 
 internal sealed class MyGame : GameBase, IKeyHandler {
 
-	private const float ScaleFactor = 2.0f;
+	//private const float ScaleFactor = 2.0f;
 	private readonly IDevice _device;
 	private readonly IDisplay _display;
 	private readonly Keyboard _keyboard;
@@ -17,11 +17,13 @@ internal sealed class MyGame : GameBase, IKeyHandler {
 	//private readonly Rectangle _clip;
 	//private readonly TextureDebug _textureDebug;
 	private readonly ISpriteBatch _spriteBatch;
-	private readonly ISpriteAtlas _textBuffer;
+	private readonly ITexture _terrain;
+	private readonly ISubTexture _terrainPiece;
+	//private readonly ITextureAtlas _textBuffer;
 
-	private readonly IFramebuffer _surface;
-	private readonly float _scaledWidth;
-	private readonly float _scaledHeight;
+	//private readonly IFramebuffer _surface;
+	//private readonly float _scaledWidth;
+	//private readonly float _scaledHeight;
 
 	public MyGame(
 		IDevice device,
@@ -41,10 +43,11 @@ internal sealed class MyGame : GameBase, IKeyHandler {
 		//_font = device.LoadTtfFont( "Roboto_Condensed-Medium.ttf", 16 );
 		_font = device.LoadTtfFont( "m5x7.ttf", 16 );
 
-		int scaledHeight = (int)Math.Ceiling( display.Height / ScaleFactor );
-		int scaledWidth = (int)Math.Ceiling( display.Width / ScaleFactor );
-		_scaledWidth = scaledWidth * ScaleFactor;
-		_scaledHeight = scaledHeight * ScaleFactor;
+		//int scaledHeight = (int)Math.Ceiling( display.Height / ScaleFactor );
+		//int scaledWidth = (int)Math.Ceiling( display.Width / ScaleFactor );
+		//_scaledWidth = scaledWidth * ScaleFactor;
+		//_scaledHeight = scaledHeight * ScaleFactor;
+		/*
 		_surface = device.CreateFramebuffer( scaledWidth, scaledHeight, TextureFilter.Nearest );
 
 		_textBuffer = device.CreateSpriteAtlas(
@@ -52,10 +55,13 @@ internal sealed class MyGame : GameBase, IKeyHandler {
 			spriteBatch
 		);
 
-		_textBuffer.Add( "hello", _font, "Scaled Text!"u8, 0xFFFFFFFF, 0x707070FF, 1 );
 
+		_textBuffer.Add( "hello", _font, "Scaled Text!"u8, 0xFFFFFFFF, 0x707070FF, 1 );
+		*/
+
+		_terrain = _device.LoadTexture( "terrain.png", true, TextureFilter.Linear );
+		_terrainPiece = _terrain.CreateSubTexture( "terrain1", 384, 256, 96, 96 );
 		/*
-		ITexture terrain = _device.LoadTexture( "terrain.png" );
 		_atlas = device.CreateSpriteAtlas(
 			device.CreateFramebuffer( 1024, 1024 ),
 			spriteBatch
@@ -87,14 +93,21 @@ internal sealed class MyGame : GameBase, IKeyHandler {
 		return false;
 	}
 
-	private float _rotation;
-
 	public override void Render(
 		double deltaTime
 	) {
 
-		_surface.Clear( 0x000000FF );
+		_display.Clear( 0x6495EDFF);
 
+		_spriteBatch.Start( _display, _terrain );
+		_spriteBatch.Draw( 32, 100, 96, 96, _terrainPiece, 0xFFFFFFFF );
+		_spriteBatch.Draw( 200, 100, 96 * 2, 96 * 2, _terrainPiece, 0xFFFFFFFF );
+		_spriteBatch.Draw( 500, 100, 96 * 2, 96 * 2, _terrainPiece, 45 * MathF.PI / 180f, 0xFFFFFFFF );
+		_spriteBatch.Finish();
+
+		//_surface.Clear( 0x000000FF );
+
+/*
 		_textBuffer.Measure( "hello", out int textWidth, out int textHeight );
 		_textBuffer.Start( _surface );
 		_textBuffer.Draw( "hello", ( _surface.Width / 2 ) - (textWidth / 2), ( _surface.Height / 2 ) - (textHeight / 2) );
@@ -105,34 +118,18 @@ internal sealed class MyGame : GameBase, IKeyHandler {
 		_spriteBatch.Start( _display, _surface );
 		_spriteBatch.Draw( 0.0f, 0.0f, _scaledWidth, _scaledHeight, 0.0f, 0.0f, 1.0f, 1.0f, 0xFFFFFFFF );
 		_spriteBatch.Finish();
-
-		/*
-		if (_oldRotation != _rotation) {
-			_oldRotation = _rotation;
-			string formattedRotation = _rotation.ToString( "F5", System.Globalization.CultureInfo.InvariantCulture );
-			_atlas.Update( "hello", _font, formattedRotation, 0xFFFFFFFF, 0x000000FF, 1 );
-		}
-
-		_atlas.Start( _display );
-		_atlas.Draw( "tall_grass", 100, 100 );
-		_atlas.Draw( "tall_grass", 200, 100, 96 * 2, 96 * 2 );
-		_atlas.Draw( "tall_grass", 400, 100, 96 * 3, 96 * 3 );
-		_atlas.Draw( "tall_grass", 700, 100, 96 * 4, 96 * 4 );
-		_atlas.Draw( "hello", 75, 75, _rotation );
-		_atlas.Finish();
 		*/
 	}
 
 	public override void Update(
 		double deltaTime
 	) {
-		_rotation += (float)( 180.0 * deltaTime ) * ( MathF.PI / 180f );
-		_rotation %= 360f;
 	}
 
 	public override void Dispose() {
-		_surface.Dispose();
-		_textBuffer.Dispose();
+		//_surface.Dispose();
+		//_textBuffer.Dispose();
+		_terrain.Dispose();
 		_font.Dispose();
 	}
 }

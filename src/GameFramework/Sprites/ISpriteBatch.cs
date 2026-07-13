@@ -15,17 +15,16 @@ public interface ISpriteBatch : IDisposable {
 
 	// Helper methods for drawing
 	// --------------------------
-	void Draw( float x, float y, float width, float height, Sprite sprite, uint colour ) => Draw( x, y, width, height, sprite.u1, sprite.v1, sprite.u2, sprite.v2, colour );
-	void Draw( float x, float y, Sprite sprite, uint colour ) => Draw( x, y, sprite.Width, sprite.Height, sprite.u1, sprite.v1, sprite.u2, sprite.v2, colour );
-	void Draw( float x, float y, float width, float height, Sprite sprite, float rotation, uint colour ) => Draw( x, y, width, height, sprite.u1, sprite.v1, sprite.u2, sprite.v2, rotation, width * 0.5f, height * 0.5f, colour );
-	void Draw( float x, float y, Sprite sprite, float rotation, uint colour ) => Draw( x, y, sprite.Width, sprite.Height, sprite.u1, sprite.v1, sprite.u2, sprite.v2, rotation, sprite.Width * 0.5f, sprite.Height * 0.5f, colour );
-	void Draw( float x, float y, float width, float height, Sprite sprite, float rotation, float originX, float originY, uint colour ) => Draw( x, y, width, height, sprite.u1, sprite.v1, sprite.u2, sprite.v2, rotation, originX, originY, colour );
-	void Draw( float x, float y, Sprite sprite, float rotation, float originX, float originY, uint colour ) => Draw( x, y, sprite.Width, sprite.Height, sprite.u1, sprite.v1, sprite.u2, sprite.v2, rotation, originX, originY, colour );
+	void Draw( float x, float y, float width, float height, ISubTexture subTexture, uint colour ) => Draw( x, y, width, height, subTexture.U1, subTexture.V1, subTexture.U2, subTexture.V2, colour );
+	void Draw( float x, float y, ISubTexture subTexture, uint colour ) => Draw( x, y, subTexture.Width, subTexture.Height, subTexture.U1, subTexture.V1, subTexture.U2, subTexture.V2, colour );
+	void Draw( float x, float y, float width, float height, ISubTexture subTexture, float rotation, uint colour ) => Draw( x, y, width, height, subTexture.U1, subTexture.V1, subTexture.U2, subTexture.V2, rotation, width * 0.5f, height * 0.5f, colour );
+	void Draw( float x, float y, ISubTexture subTexture, float rotation, uint colour ) => Draw( x, y, subTexture.Width, subTexture.Height, subTexture.U1, subTexture.V1, subTexture.U2, subTexture.V2, rotation, subTexture.Width * 0.5f, subTexture.Height * 0.5f, colour );
+	void Draw( float x, float y, float width, float height, ISubTexture subTexture, float rotation, float originX, float originY, uint colour ) => Draw( x, y, width, height, subTexture.U1, subTexture.V1, subTexture.U2, subTexture.V2, rotation, originX, originY, colour );
 
 	// Methods to draw clipped sprites
 	// (Using these instead of setting the clip on the render target can be more efficient as it avoids flushing the batch if you need to change the clipping rect often.)
 	// -------------------------------
-	void Draw( float x, float y, float width, float height, Sprite sprite, Rectangle clip, uint colour ) {
+	void Draw( float x, float y, float width, float height, ISubTexture subTexture, Rectangle clip, uint colour ) {
 		float left = MathF.Max( x, clip.Left );
 		float top = MathF.Max( y, clip.Top );
 		float right = MathF.Min( x + width, clip.Right );
@@ -37,17 +36,17 @@ public interface ISpriteBatch : IDisposable {
 		}
 
 		// Convert the visible bounds into the sprite's UV space.
-		float uPerPixel = ( sprite.u2 - sprite.u1 ) / width;
-		float vPerPixel = ( sprite.v2 - sprite.v1 ) / height;
+		float uPerPixel = ( subTexture.U2 - subTexture.U1 ) / width;
+		float vPerPixel = ( subTexture.V2 - subTexture.V1 ) / height;
 
-		float u1 = sprite.u1 + ( ( left - x ) * uPerPixel );
-		float v1 = sprite.v1 + ( ( top - y ) * vPerPixel );
-		float u2 = sprite.u1 + ( ( right - x ) * uPerPixel );
-		float v2 = sprite.v1 + ( ( bottom - y ) * vPerPixel );
+		float u1 = subTexture.U1 + ( ( left - x ) * uPerPixel );
+		float v1 = subTexture.V1 + ( ( top - y ) * vPerPixel );
+		float u2 = subTexture.U1 + ( ( right - x ) * uPerPixel );
+		float v2 = subTexture.V1 + ( ( bottom - y ) * vPerPixel );
 
 		Draw( left, top, right - left, bottom - top, u1, v1, u2, v2, colour );
 	}
 
-	void Draw( float x, float y, Sprite sprite, Rectangle clip, uint colour ) => Draw( x, y, sprite.Width, sprite.Height, sprite, clip, colour );
+	void Draw( float x, float y, ISubTexture subTexture, Rectangle clip, uint colour ) => Draw( x, y, subTexture.Width, subTexture.Height, subTexture, clip, colour );
 
 }

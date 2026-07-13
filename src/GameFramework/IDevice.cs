@@ -10,12 +10,6 @@ public interface IDevice {
 		Action<IServiceCollection> configure
 	);
 
-	IFramebuffer CreateFramebuffer(
-		int width,
-		int height,
-		TextureFilter filter = TextureFilter.Nearest
-	);
-
 	void Terminate();
 
 	IFont LoadTtfFont(
@@ -29,10 +23,18 @@ public interface IDevice {
 		TextureFilter filter = TextureFilter.Linear
 	);
 
+/*
+	IFramebuffer CreateFramebuffer(
+		int width,
+		int height,
+		TextureFilter filter = TextureFilter.Nearest
+	);
+
 	ISpriteAtlas CreateSpriteAtlas(
 		ITexture texture,
 		ISpriteBatch spriteBatch
 	);
+	*/
 
 	void Run();
 }
