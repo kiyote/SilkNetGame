@@ -1,5 +1,6 @@
 ﻿using System.Drawing;
 using GameFramework.Animations;
+using GameFramework.Sprites;
 using Microsoft.Extensions.DependencyInjection;
 using Silk.NET.Core.Contexts;
 using Silk.NET.GLFW;
@@ -12,7 +13,20 @@ public static class ExtensionMethods {
 	public static IServiceCollection AddGame<T>(
 		this IServiceCollection services
 	) where T : GameBase {
+		return services.AddGame<T>( static _ => { } );
+	}
+
+	public static IServiceCollection AddGame<T>(
+		this IServiceCollection services,
+		Action<GameFrameworkOptions> configure
+	) where T : GameBase {
+		ArgumentNullException.ThrowIfNull( configure );
+
+		GameFrameworkOptions options = new GameFrameworkOptions();
+		configure( options );
+
 		services.AddTweeningEngine();
+		_ = services.AddSingleton( options.SpriteBatch );
 		_ = services.AddSingleton<GameBase, T>();
 
 		return services;
@@ -33,8 +47,8 @@ public static class ColorExtensions {
 public static class DeviceExtensions {
 
 	extension( IDevice ) {
-		public static IDevice Create( string title, int width, int height, bool vsync, WindowMode windowMode ) {
-			return new Device( title, width, height, vsync, windowMode );
+		public static IDevice Create( string title, Dimension size, bool vsync, WindowMode windowMode ) {
+			return new Device( title, size, vsync, windowMode );
 		}
 	}
 }

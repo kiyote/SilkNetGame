@@ -1,33 +1,35 @@
 ﻿namespace GameFramework.Textures;
 
 public interface ITexture : ISubTexture, IDisposable {
-	int TextureWidth { get; }
-	int TextureHeight { get; }
+	Dimension TextureSize { get; }
 	uint Id { get; }
 
+	// The U offset for one-half pixel
 	float HalfX { get; }
+	// The V offset for one-half pixel
 	float HalfY { get; }
 
 	TextureFilter Filter { get; }
 
+	void Clear(
+		Coordinate position,
+		Dimension size,
+		uint colour = 0
+	);
+
 	void Copy(
-		int x,
-		int y,
+		Coordinate position,
 		ITexture source,
-		int sourceX,
-		int sourceY,
-		int sourceWidth,
-		int sourceHeight
+		Coordinate sourcePosition,
+		Dimension sourceSize
 	);
 
 	ITextureAtlas CreateAtlas();
 
 	ISubTexture CreateSubTexture(
 		string name,
-		int left,
-		int top,
-		int width,
-		int height
+		Coordinate position,
+		Dimension size
 	);
 
 	void Bind( int textureUnit = 0 );

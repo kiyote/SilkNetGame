@@ -47,7 +47,7 @@ public ref struct Utf8LineSplitter {
 
 		Span<char> charBuffer = stackalloc char[maxLookaheadBytes];
 		int charsWritten = Encoding.UTF8.GetChars( remainingText[..maxLookaheadBytes], charBuffer );
-		ReadOnlySpan<char> lookaheadChars = charBuffer.Slice( 0, charsWritten );
+		ReadOnlySpan<char> lookaheadChars = charBuffer[..charsWritten];
 
 		var breaker = new LineBreakEnumerator( lookaheadChars );
 
@@ -64,7 +64,7 @@ public ref struct Utf8LineSplitter {
 			int wrapByteLength = Encoding.UTF8.GetByteCount( lookaheadChars[..lineBreak.PositionWrap] );
 
 			ReadOnlySpan<byte> textSegmentToMeasure = remainingText[..measureByteLength];
-			_font.MeasureText( textSegmentToMeasure, _outlineWidth, out int segmentWidth, out int _ );
+			int segmentWidth = _font.MeasureText( textSegmentToMeasure, _outlineWidth ).Width;
 
 			if( segmentWidth <= _maxWidth ) {
 				lastSafeBreakByteIndex = wrapByteLength;
@@ -88,7 +88,7 @@ public ref struct Utf8LineSplitter {
 			lastSafeBreakByteIndex = remainingText.Length;
 		}
 
-		lineSlice = remainingText.Slice( 0, lastSafeBreakByteIndex );
+		lineSlice = remainingText[..lastSafeBreakByteIndex];
 		_currentByteOffset += lastSafeBreakByteIndex;
 		return true;
 	}

@@ -1,4 +1,6 @@
-﻿namespace GameFramework.Scenes;
+﻿using GameFramework.Sprites;
+
+namespace GameFramework.Scenes;
 
 public interface ISceneManager {
 
@@ -16,5 +18,9 @@ public interface ISceneManager {
 
 	bool MouseMove(
 		Coordinate coordinate
+	);
+
+	int Render(
+		ISpriteBatch spriteBatch
 	);
 }

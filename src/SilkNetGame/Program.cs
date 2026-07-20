@@ -20,15 +20,17 @@ internal static class Program {
 		IDevice
 			.Create(
 				Title,
-				displayOptions.Width,
-				displayOptions.Height,
+				new Dimension( displayOptions.Width, displayOptions.Height ),
 				displayOptions.VSync,
 				displayOptions.Mode
 			)
 			.ConfigureServices( services => {
 				services.AddSingleton( configuration );
-				services.AddGame<MyGame>();
-				//services.AddGameFrameworkDebug();
+				services.AddGame<MyGame>( options => {
+					options.SpriteBatch.MaxSpritesPerFrame = 2_000;
+					options.SpriteBatch.NumSegments = 4;
+				} );
+				services.AddGameFrameworkDebug();
 			} )
 			.Run();
 	}

@@ -10,7 +10,7 @@ public interface ITweeningEngine {
 		float start,
 		float target,
 		TimeSpan duration,
-		EaseType ease
+		Easing ease
 	);
 
 	// Advances every active tween. deltaTime is the elapsed time since the last

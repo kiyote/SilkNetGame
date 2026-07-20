@@ -2,5 +2,5 @@
 
 namespace GameFramework;
 
-public interface IFramebuffer: IRenderTarget, ITexture {
+public interface IRenderTexture: IRenderTarget, ITexture {
 }

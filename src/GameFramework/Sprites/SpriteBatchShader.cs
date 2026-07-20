@@ -49,8 +49,9 @@ internal sealed class SpriteBatchShader : Shader {
 		""";
 
 	public SpriteBatchShader(
-		GL gl
-	) : base( gl, VertexCode, FragmentCode ) {
+		GL gl,
+		GlStateCache stateCache
+	) : base( gl, stateCache, VertexCode, FragmentCode ) {
 
 		BindUniforms();
 	}

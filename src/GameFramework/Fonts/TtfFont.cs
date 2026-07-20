@@ -15,13 +15,14 @@ internal sealed unsafe class TtfFont : IFont {
 	private const int MaxStackTextBytes = 512;
 
 	private readonly GL _gl;
+	private readonly GlStateCache _stateCache;
 	private byte[]? _fontData;
 	private StbTrueType.stbtt_fontinfo? _fontInfo;
 	private readonly Blob _blob;
 	private readonly Face _face;
 	private readonly Font _font;
 	private readonly float _scale;
-	private bool _isDisposed;
+	private bool _isDisposed = true;
 
 	private readonly Dictionary<uint, GlyphMetrics> _glyphCache = [];
 
@@ -39,10 +40,12 @@ internal sealed unsafe class TtfFont : IFont {
 
 	public TtfFont(
 		GL gl,
+		GlStateCache stateCache,
 		string fontPath,
 		float fontHeightInPixels
 	) {
 		_gl = gl;
+		_stateCache = stateCache;
 		_fontData = File.ReadAllBytes( fontPath );
 
 		_fontInfo = new StbTrueType.stbtt_fontinfo();
@@ -61,6 +64,7 @@ internal sealed unsafe class TtfFont : IFont {
 
 		int hbScale = (int)MathF.Round( _scale * _face.UnitsPerEm * 64.0f );
 		_font.SetScale( hbScale, hbScale );
+		_isDisposed = false;
 	}
 
 	private void ShapeText(
@@ -86,8 +90,7 @@ internal sealed unsafe class TtfFont : IFont {
 	public void DrawText(
 		ITexture texture,
 		ReadOnlySpan<byte> text,
-		int x,
-		int y,
+		Coordinate position,
 		uint colour = 0xFFFFFFFF
 	) {
 		ObjectDisposedException.ThrowIf( _isDisposed, this );
@@ -95,14 +98,13 @@ internal sealed unsafe class TtfFont : IFont {
 		// Text with no outline is just the outlined path with a zero-width stroke.
 		byte[] textureData = GenerateTextureData( text, colour, 0u, 0, out int width, out int height );
 
-		UploadClipped( texture, textureData, x, y, width, height );
+		UploadClipped( texture, textureData, position, new Dimension( width, height ) );
 	}
 
 	public void DrawOutlinedText(
 		ITexture texture,
 		ReadOnlySpan<byte> text,
-		int x,
-		int y,
+		Coordinate position,
 		uint textColour = 0xFFFFFFFF,
 		uint outlineColour = 0x000000FF,
 		int outlineThickness = 1
@@ -111,31 +113,29 @@ internal sealed unsafe class TtfFont : IFont {
 
 		byte[] textureData = GenerateTextureData( text, textColour, outlineColour, outlineThickness, out int width, out int height );
 
-		UploadClipped( texture, textureData, x, y, width, height );
+		UploadClipped( texture, textureData, position, new Dimension( width, height ) );
 	}
 
 	private void UploadClipped(
 		ITexture texture,
 		byte[] textureData,
-		int x,
-		int y,
-		int width,
-		int height
+		Coordinate position,
+		Dimension size
 	) {
 		// Nothing was rendered (empty / whitespace string).
-		if( width <= 0 || height <= 0 || textureData.Length == 0 ) {
+		if( size.Width <= 0 || size.Height <= 0 || textureData.Length == 0 ) {
 			return;
 		}
 
-		int texWidth = (int)texture.TextureWidth;
-		int texHeight = (int)texture.TextureHeight;
+		int texWidth = texture.TextureSize.Width;
+		int texHeight = texture.TextureSize.Height;
 
-		int destX = x;
-		int destY = y;
+		int destX = position.X;
+		int destY = position.Y;
 		int srcSkipX = 0;
 		int srcSkipY = 0;
-		int copyWidth = width;
-		int copyHeight = height;
+		int copyWidth = size.Width;
+		int copyHeight = size.Height;
 
 		// Clip against the left / top edges (negative destination offsets):
 		// move the destination back to 0 and skip the hidden source columns/rows.
@@ -163,11 +163,11 @@ internal sealed unsafe class TtfFont : IFont {
 			return;
 		}
 
-		_gl.BindTexture( TextureTarget.Texture2D, texture.Id );
+		_stateCache.BindTexture( 0, texture.Id );
 
 		// Describe the real stride of the source buffer and the sub-rect to read,
 		// so a left/top clip reads from the correct offset instead of repacking.
-		_gl.PixelStore( PixelStoreParameter.UnpackRowLength, width );
+		_gl.PixelStore( PixelStoreParameter.UnpackRowLength, size.Width );
 		_gl.PixelStore( PixelStoreParameter.UnpackSkipPixels, srcSkipX );
 		_gl.PixelStore( PixelStoreParameter.UnpackSkipRows, srcSkipY );
 
@@ -191,20 +191,18 @@ internal sealed unsafe class TtfFont : IFont {
 		_gl.PixelStore( PixelStoreParameter.UnpackSkipRows, 0 );
 	}
 
-	public void MeasureText(
+	public Dimension MeasureText(
 		ReadOnlySpan<byte> text,
-		int outlineWidth,
-		out int width,
-		out int height
+		int outlineWidth
 	) {
-		LayoutGlyphs( text, outlineWidth, out width, out height, out _, out _ );
+		LayoutGlyphs( text, outlineWidth, out int width, out int height, out _, out _ );
+		return new Dimension( width, height );
 	}
 
 	public void DrawText(
 		ITexture texture,
 		string text,
-		int x,
-		int y,
+		Coordinate position,
 		uint colour = 0xFFFFFFFF
 	) {
 		int maxBytes = Encoding.UTF8.GetMaxByteCount( text.Length );
@@ -212,12 +210,12 @@ internal sealed unsafe class TtfFont : IFont {
 		if (maxBytes <= MaxStackTextBytes) {
 			Span<byte> buffer = stackalloc byte[MaxStackTextBytes];
 			int written = Encoding.UTF8.GetBytes( text, buffer );
-			DrawText( texture, buffer[..written], x, y, colour );
+			DrawText( texture, buffer[..written], position, colour );
 		} else {
 			byte[] rented = ArrayPool<byte>.Shared.Rent( maxBytes );
 			Span<byte> buffer = rented;
 			int written = Encoding.UTF8.GetBytes( text, buffer );
-			DrawText( texture, buffer[..written], x, y, colour );
+			DrawText( texture, buffer[..written], position, colour );
 			ArrayPool<byte>.Shared.Return( rented );
 		}
 	}
@@ -225,8 +223,7 @@ internal sealed unsafe class TtfFont : IFont {
 	public void DrawOutlinedText(
 		ITexture texture,
 		string text,
-		int x,
-		int y,
+		Coordinate position,
 		uint textColour = 0xFFFFFFFF,
 		uint outlineColour = 0x000000FF,
 		int outlineThickness = 1
@@ -236,7 +233,7 @@ internal sealed unsafe class TtfFont : IFont {
 		if( text.Length * 4 <= MaxStackTextBytes ) {
 			Span<byte> buffer = stackalloc byte[MaxStackTextBytes];
 			int written = Encoding.UTF8.GetBytes( text, buffer );
-			DrawOutlinedText( texture, buffer[..written], x, y, textColour, outlineColour, outlineThickness );
+			DrawOutlinedText( texture, buffer[..written], position, textColour, outlineColour, outlineThickness );
 		} else {
 			// Only calculate the exact max bytes if we absolutely must fall back to the pool
 			int maxBytes = Encoding.UTF8.GetMaxByteCount( text.Length );
@@ -246,24 +243,22 @@ internal sealed unsafe class TtfFont : IFont {
 			Span<byte> buffer = rented;
 			int written = Encoding.UTF8.GetBytes( text, buffer );
 
-			DrawOutlinedText( texture, buffer[..written], x, y, textColour, outlineColour, outlineThickness );
+			DrawOutlinedText( texture, buffer[..written], position, textColour, outlineColour, outlineThickness );
 			ArrayPool<byte>.Shared.Return( rented );
 		}
 	}
 
 
-	public void MeasureText(
+	public Dimension MeasureText(
 		string text,
-		int outlineWidth,
-		out int width,
-		out int height
+		int outlineWidth
 	) {
 		// 1 char is at most 4 UTF-8 bytes. 
 		// Checking text.Length * 4 ensures the stack buffer will never overflow.
 		if( text.Length * 4 <= MaxStackTextBytes ) {
 			Span<byte> buffer = stackalloc byte[MaxStackTextBytes];
 			int written = Encoding.UTF8.GetBytes( text, buffer );
-			MeasureText( buffer[..written], outlineWidth, out width, out height );
+			return MeasureText( buffer[..written], outlineWidth );
 		} else {
 			// Fall back to the ArrayPool only for long strings
 			int maxBytes = Encoding.UTF8.GetMaxByteCount( text.Length );
@@ -271,9 +266,10 @@ internal sealed unsafe class TtfFont : IFont {
 
 			Span<byte> buffer = rented;
 			int written = Encoding.UTF8.GetBytes( text, buffer );
-			MeasureText( buffer[..written], outlineWidth, out width, out height );
+			Dimension size = MeasureText( buffer[..written], outlineWidth );
 
 			ArrayPool<byte>.Shared.Return( rented );
+			return size;
 		}
 	}
 

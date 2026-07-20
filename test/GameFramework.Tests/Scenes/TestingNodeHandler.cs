@@ -1,6 +1,6 @@
 ﻿namespace GameFramework.Scenes.Tests;
 
-internal sealed class TestingNodeHandler : ISceneNodeHandler {
+internal sealed class TestingNodeHandler : ISceneMouseHandler {
 
 	public void OnMousePressed(
 		SceneNode node,

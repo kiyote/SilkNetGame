@@ -7,9 +7,7 @@ public interface IRenderTarget : IDisposable {
 
 	Matrix4x4 Projection { get; }
 
-	int Width { get; }
-
-	int Height { get; }
+	Dimension Size { get; }
 
 	void Clear(
 		Color colour
@@ -24,13 +22,13 @@ public interface IRenderTarget : IDisposable {
 	);
 
 	void SetClip(
-		int x,
-		int y,
-		int w,
-		int h
+		Coordinate position,
+		Dimension size
 	);
 
 	void ClearClip();
+
+	Rectangle? Clip { get; }
 
 	void Bind();
 

@@ -5,14 +5,17 @@ namespace GameFramework;
 public class Shader : IDisposable {
 	private readonly uint _program;
 	private readonly GL _gl;
+	private readonly GlStateCache _stateCache;
 	private bool _isDisposed;
 
-	public Shader(
+	internal Shader(
 		GL gl,
+		GlStateCache stateCache,
 		string vertexCode,
 		string fragmentCode
 	) {
 		_gl = gl;
+		_stateCache = stateCache;
 
 
 		// Create our vertex shader, and give it our vertex shader source code.
@@ -69,7 +72,7 @@ public class Shader : IDisposable {
 	protected GL GL => _gl;
 
 	public void Bind() {
-		_gl.UseProgram( _program );
+		_stateCache.UseProgram( _program );
 	}
 
 	public void Dispose() {

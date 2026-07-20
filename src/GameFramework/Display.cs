@@ -12,22 +12,23 @@ internal sealed class Display : IDisplay {
 
 	private readonly IWindow _window;
 	private readonly GL _gl;
-	private int _width;
-	private int _height;
+	private readonly GlStateCache _stateCache;
+	private Dimension _size;
 	private Matrix4x4 _projection;
 	private Rectangle? _clip;
 
 	public Display(
 		IWindow window,
 		GL gl,
-		int width,
-		int height
+		GlStateCache stateCache,
+		Dimension size
 	) {
 		_gl = gl;
+		_stateCache = stateCache;
 		_window = window;
 		_window.FramebufferResize += FramebufferResize;
 
-		SetSize( width, height );
+		SetSize( size );
 	}
 
 	void IRenderTarget.Clear(
@@ -61,18 +62,16 @@ internal sealed class Display : IDisplay {
 	}
 
 	void IRenderTarget.SetClip(
-		int x,
-		int y,
-		int w,
-		int h
+		Coordinate position,
+		Dimension size
 	) {
 		if( _clip is null
-			|| _clip.Value.X != x
-			|| _clip.Value.Y != y
-			|| _clip.Value.Width != w
-			|| _clip.Value.Height != h
+			|| _clip.Value.X != position.X
+			|| _clip.Value.Y != position.Y
+			|| _clip.Value.Width != size.Width
+			|| _clip.Value.Height != size.Height
 		) {
-			_clip = new Rectangle( x, y, w, h );
+			_clip = new Rectangle( position.X, position.Y, size.Width, size.Height );
 		}
 		if( IsBound() ) {
 			ApplyClip();
@@ -86,15 +85,15 @@ internal sealed class Display : IDisplay {
 		}
 	}
 
+	Rectangle? IRenderTarget.Clip => _clip;
+
 	Matrix4x4 IRenderTarget.Projection => _projection;
 
-	int IRenderTarget.Width => _width;
-
-	int IRenderTarget.Height => _height;
+	Dimension IRenderTarget.Size => _size;
 
 	private void DoBind() {
-		_gl.BindFramebuffer( FramebufferTarget.Framebuffer, 0 );
-		_gl.Viewport( 0, 0, (uint)_width, (uint)_height );
+		_stateCache.BindFramebuffer( 0 );
+		_gl.Viewport( 0, 0, (uint)_size.Width, (uint)_size.Height );
 		ApplyClip();
 	}
 
@@ -102,36 +101,32 @@ internal sealed class Display : IDisplay {
 		if( _clip is Rectangle clip ) {
 			// The display projection has its origin at the top-left, but the
 			// OpenGL scissor box is measured from the bottom-left, so flip Y.
-			int y = (int)_height - ( clip.Y + clip.Height );
-			_gl.Enable( EnableCap.ScissorTest );
-			_gl.Scissor( clip.X, y, (uint)clip.Width, (uint)clip.Height );
+			int y = _size.Height - ( clip.Y + clip.Height );
+			_stateCache.SetScissor( true, clip.X, y, (uint)clip.Width, (uint)clip.Height );
 		} else {
-			_gl.Disable( EnableCap.ScissorTest );
+			_stateCache.SetScissor( false, 0, 0, 0, 0 );
 		}
 	}
 
 	private bool IsBound() {
-		_gl.GetInteger( GLEnum.FramebufferBinding, out int bound );
-		return bound == 0;
+		return _stateCache.IsFramebufferBound( 0 );
 	}
 
 	private void FramebufferResize(
 		Vector2D<int> size
 	) {
-		SetSize( size.X, size.Y );
+		SetSize( new Dimension( size.X, size.Y ) );
 	}
 
 	private void SetSize(
-		int width,
-		int height
+		Dimension size
 	) {
-		_width = width;
-		_height = height;
-		_gl.Viewport( 0, 0, (uint)_width, (uint)_height );
+		_size = size;
+		_gl.Viewport( 0, 0, (uint)size.Width, (uint)size.Height );
 		_projection = Matrix4x4.CreateOrthographicOffCenter(
 			left: 0.0f,
-			right: width,
-			bottom: height,
+			right: size.Width,
+			bottom: size.Height,
 			top: 0.0f,
 			zNearPlane: -1.0f,
 			zFarPlane: 1.0f

@@ -9,8 +9,8 @@ public class VectorTweeningEngine : ITweeningEngine {
 	private readonly int _alignedCapacity; // _capacity rounded up to a whole number of Vector<float>.Count
 	private readonly Vector<float> _oneVec = new Vector<float>( 1.0f );
 	private readonly Vector<float> _twoVec = new Vector<float>( 2.0f );
-	private readonly Vector<int> _quadInCode = new Vector<int>( (int)EaseType.QuadIn );
-	private readonly Vector<int> _quadOutCode = new Vector<int>( (int)EaseType.QuadOut );
+	private readonly Vector<int> _quadInCode = new Vector<int>( (int)Easing.QuadIn );
+	private readonly Vector<int> _quadOutCode = new Vector<int>( (int)Easing.QuadOut );
 
 	// SoA Data Arrays
 	private readonly float[] _start;
@@ -18,7 +18,7 @@ public class VectorTweeningEngine : ITweeningEngine {
 	private readonly float[] _current;
 	private readonly float[] _progress;
 	private readonly float[] _speed;
-	private readonly EaseType[] _easeTypes;
+	private readonly Easing[] _easeTypes;
 	private readonly int[] _generation;
 
 	public VectorTweeningEngine(
@@ -36,7 +36,7 @@ public class VectorTweeningEngine : ITweeningEngine {
 		_current = new float[_alignedCapacity];
 		_progress = new float[_alignedCapacity];
 		_speed = new float[_alignedCapacity];
-		_easeTypes = new EaseType[_alignedCapacity];
+		_easeTypes = new Easing[_alignedCapacity];
 		_generation = new int[_alignedCapacity];
 
 		// A slot is "free" once its progress reaches 1.0. Seed every slot at 1.0 so
@@ -49,7 +49,7 @@ public class VectorTweeningEngine : ITweeningEngine {
 		float start,
 		float target,
 		TimeSpan duration,
-		EaseType ease
+		Easing ease
 	) {
 		ArgumentOutOfRangeException.ThrowIfLessThanOrEqual( duration, TimeSpan.Zero, nameof( duration ) );
 
@@ -79,7 +79,7 @@ public class VectorTweeningEngine : ITweeningEngine {
 		float dt = (float)deltaTime;
 		Vector<float> dtVec = new Vector<float>( dt );
 
-		ReadOnlySpan<int> easeCodes = MemoryMarshal.Cast<EaseType, int>( _easeTypes.AsSpan() );
+		ReadOnlySpan<int> easeCodes = MemoryMarshal.Cast<Easing, int>( _easeTypes.AsSpan() );
 
 		for( int i = 0; i < _alignedCapacity; i += _vectorSize ) {
 			// 1. Load data into SIMD registers

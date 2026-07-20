@@ -1,6 +1,6 @@
 namespace GameFramework.Animations;
 
-public enum EaseType: int
+public enum Easing: int
 {
     Linear = 0,
     QuadIn = 1,

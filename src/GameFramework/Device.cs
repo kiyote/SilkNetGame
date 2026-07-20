@@ -18,6 +18,7 @@ internal sealed class Device : IDevice {
 
 	private IInputContext _input = default!;
 	private GL _gl = default!;
+	private GlStateCache _stateCache = default!;
 	private GameBase _game = default!;
 	private IServiceProvider _services = default!;
 
@@ -28,8 +29,7 @@ internal sealed class Device : IDevice {
 
 	public Device(
 		string title,
-		int width,
-		int height,
+		Dimension size,
 		bool vsync,
 		WindowMode windowMode
 	) {
@@ -45,7 +45,7 @@ internal sealed class Device : IDevice {
 		options.VSync = vsync;
 
 		if( windowMode == WindowMode.Windowed ) {
-			options.Size = new Vector2D<int>( width, height );
+			options.Size = new Vector2D<int>( size.Width, size.Height );
 			options.WindowState = WindowState.Normal;
 		} else if( windowMode == WindowMode.Fullscreen ) {
 			options.Size = new Vector2D<int>( screenResolution.X, screenResolution.Y );
@@ -87,39 +87,46 @@ internal sealed class Device : IDevice {
 	) {
 		return new Textures.Texture(
 			_gl,
+			_stateCache,
 			textureFile,
 			premultiplyAlpha,
 			filter
 		);
 	}
 
-/*
-	IFramebuffer IDevice.CreateFramebuffer(
-		int width,
-		int height,
+	IRenderTexture IDevice.CreateRenderTexture(
+		Dimension size,
 		TextureFilter filter
 	) {
-		return new Framebuffer(
+		return new RenderTexture(
 			_gl,
-			width,
-			height,
+			_stateCache,
+			size,
 			filter
 		);
 	}
-	*/
 
-/*
-	ISpriteAtlas IDevice.CreateSpriteAtlas(
-		ITexture texture,
-		ISpriteBatch spriteBatch
+	ITextureAtlas IDevice.CreateTextureAtlas(
+		ITexture texture
 	) {
-		return new SpriteAtlas(
-			_gl,
-			texture,
-			spriteBatch
+		return new TextureAtlas(
+			texture
 		);
 	}
-	*/
+
+	ITextureAtlas IDevice.CreateTextureAtlas(
+		Dimension size,
+		TextureFilter filter
+	) {
+		return new TextureAtlas(
+			new RenderTexture(
+			_gl,
+			_stateCache,
+			size,
+			filter
+		) );
+	}
+
 
 	IFont IDevice.LoadTtfFont(
 		string fontFile,
@@ -127,6 +134,7 @@ internal sealed class Device : IDevice {
 	) {
 		return new TtfFont(
 			_gl,
+			_stateCache,
 			fontFile,
 			fontHeightInPixels
 		);
@@ -142,20 +150,22 @@ internal sealed class Device : IDevice {
 			_window.TopMost = true;
 		}
 
-		int width = _window.Size.X;
-		int height = _window.Size.Y;
+		Dimension size = new( _window.Size.X, _window.Size.Y );
 
 #pragma warning disable CA1508 // CreateOpnGL/CreateInput are not nullable-aware
 		_gl = _window.CreateOpenGL() ?? throw new InvalidOperationException( "Unable to obtain GL context." );
 		_input = _window.CreateInput() ?? throw new InvalidOperationException( "Unable to obtain input context." );
 #pragma warning restore CA1508
 
+		_stateCache = new GlStateCache( _gl );
+
 #pragma warning disable CA2000 // Display is put int to DI container and disposed later
-		Display display = new Display( _window, _gl, width, height );
+		Display display = new Display( _window, _gl, _stateCache, size );
 #pragma warning restore CA2000
 
 		IServiceCollection serviceCollection = new ServiceCollection();
 		serviceCollection.AddSingleton( _gl );
+		serviceCollection.AddSingleton( _stateCache );
 		serviceCollection.AddSingleton( _input );
 		serviceCollection.AddSingleton( _window );
 		serviceCollection.AddSingleton<IDisplay>( display );

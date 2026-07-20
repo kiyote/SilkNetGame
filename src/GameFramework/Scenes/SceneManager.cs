@@ -1,16 +1,16 @@
-﻿namespace GameFramework.Scenes;
+﻿using GameFramework.Sprites;
+
+namespace GameFramework.Scenes;
 
 internal sealed class SceneManager : ISceneManager {
 
 	private readonly SceneNode _root;
-	private int _lastX = int.MinValue;
-	private int _lastY = int.MinValue;
+	private Coordinate _lastCoordinate = new( int.MinValue, int.MinValue );
 
 	public SceneManager(
-		int surfaceWidth,
-		int surfaceHeight
+		Dimension surfaceSize
 	) {
-		_root = new SceneNode( surfaceWidth, surfaceHeight );
+		_root = new SceneNode( surfaceSize );
 	}
 
 	SceneNode ISceneManager.Root => _root;
@@ -33,9 +33,28 @@ internal sealed class SceneManager : ISceneManager {
 		Coordinate coordinate
 	) {
 		bool result = WalkMouseMove( _root, coordinate, false );
-		_lastX = coordinate.X;
-		_lastY = coordinate.Y;
+		_lastCoordinate = coordinate;
 		return result;
+	}
+
+	int ISceneManager.Render(
+		ISpriteBatch spriteBatch
+	) {
+		return WalkRender( _root, spriteBatch );
+	}
+
+	private static int WalkRender(
+		SceneNode node,
+		ISpriteBatch spriteBatch
+	) {
+		int flushes = node.Render( spriteBatch ) ? 1 : 0;
+
+		// Then descend into children so they paint over their parent.
+		foreach( SceneNode child in node.Children ) {
+			flushes += WalkRender( child, spriteBatch );
+		}
+
+		return flushes;
 	}
 
 	private bool WalkMouseMove(
@@ -48,7 +67,7 @@ internal sealed class SceneManager : ISceneManager {
 		}
 
 		bool containsMouse = node.Clip.Contains( coordinate.X, coordinate.Y );
-		bool previouslyContainedMouse = node.Clip.Contains( _lastX, _lastY );
+		bool previouslyContainedMouse = node.Clip.Contains( _lastCoordinate.X, _lastCoordinate.Y );
 
 		if( containsMouse && !previouslyContainedMouse ) {
 			node.MouseEntered();

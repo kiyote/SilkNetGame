@@ -3,73 +3,57 @@ namespace GameFramework.Textures;
 
 internal sealed class SubTexture : ISubTexture {
 
-	private int _left;
-	private int _top;
-	private int _width;
-	private int _height;
+	private Coordinate _position;
+	private Dimension _size;
 
 	private float _u1;
 	private float _v1;
 	private float _u2;
 	private float _v2;
 
-	private readonly int _allocatedWidth;
-	private readonly int _allocatedHeight;
+	private readonly Coordinate _storedPosition;
+	private readonly Dimension _storedSize;
 
 	public SubTexture(
 		string name,
 		ITexture texture,
-		int left,
-		int top,
-		int width,
-		int height,
-		int allocatedWidth,
-		int allocatedHeight
+		Coordinate position,
+		Dimension size,
+		Coordinate storedPosition,
+		Dimension storedSize
 	) {
 		Name = name;
 		Texture = texture;
-		_allocatedWidth = allocatedWidth;
-		_allocatedHeight = allocatedHeight;
-		Update( left, top, width, height );
+		_storedPosition = storedPosition;
+		_storedSize = storedSize;
+		Update( position, size );
 	}
 
 	public void Update(
-		int left,
-		int top,
-		int width,
-		int height
+		Coordinate position,
+		Dimension size
 	) {
-		_left = left;
-		_top = top;
-		_width = width;
-		_height = height;
-		_u1 = left / (float)Texture.TextureWidth;
-		_v1 = top / (float)Texture.TextureHeight;
-		_u2 = ( left + width ) / (float)Texture.TextureWidth;
-		_v2 = ( top + height ) / (float)Texture.TextureHeight;
+		_position = position;
+		_size = size;
+		_u1 = position.X / (float)Texture.TextureSize.Width;
+		_v1 = position.Y / (float)Texture.TextureSize.Height;
+		_u2 = ( position.X + size.Width ) / (float)Texture.TextureSize.Width;
+		_v2 = ( position.Y + size.Height ) / (float)Texture.TextureSize.Height;
 	}
 
 	public uint Id => Texture.Id;
 
-	public int TextureWidth => Texture.TextureWidth;
+	public Coordinate StoredPosition => _storedPosition;
 
-	public int TextureHeight => Texture.TextureHeight;
-
-	public int AllocatedWidth => _allocatedWidth;
-
-	public int AllocatedHeight => _allocatedHeight;
+	public Dimension StoredSize => _storedSize;
 
 	public string Name { get; }
 
 	public ITexture Texture { get; }
 
-	public int Left => _left;
+	public Coordinate Position => _position;
 
-	public int Top => _top;
-
-	public int Width => _width;
-
-	public int Height => _height;
+	public Dimension Size => _size;
 
 	public float U1 => _u1;
 

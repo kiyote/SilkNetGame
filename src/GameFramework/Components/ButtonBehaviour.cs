@@ -2,7 +2,7 @@
 
 namespace GameFramework.Components;
 
-public sealed class ButtonBehaviour : ISceneNodeHandler {
+public sealed class ButtonBehaviour : ISceneMouseHandler {
 
 	private bool _containsMouse;
 	private State _currentState;

@@ -1,4 +1,5 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System.Drawing;
+using System.Runtime.CompilerServices;
 using GameFramework.Textures;
 using Silk.NET.OpenGL;
 
@@ -11,11 +12,15 @@ internal unsafe sealed class SpriteBatchPMO : ISpriteBatch {
 	private const int TEXTURE_OFFSET = 8;
 	private const int COLOUR_OFFSET = 16;
 	private const int VERTICES_PER_SPRITE = 4;
-	private const int MAX_SPRITES_PER_FRAME = 10_000;
-	private const int NUM_SEGMENTS = 3; // Triple Buffering
+
+	// Per-segment capacity and fence-ring depth are configured through
+	// SpriteBatchOptions (see that type for the semantics and tuning guidance).
 	private static readonly uint STRIDE = (uint)Unsafe.SizeOf<SpriteVertex>();
-	private static readonly uint FRAME_MAX_BYTES = ( MAX_SPRITES_PER_FRAME * VERTICES_PER_SPRITE * STRIDE );
-	private static readonly uint TOTAL_BUFFER_BYTES = FRAME_MAX_BYTES * NUM_SEGMENTS;
+
+	private readonly int _maxSpritesPerFrame;
+	private readonly int _numSegments;
+	private readonly uint _frameMaxBytes;
+	private readonly uint _totalBufferBytes;
 
 	private readonly GL _gl;
 	private readonly SpriteBatchShader _shader;
@@ -25,18 +30,34 @@ internal unsafe sealed class SpriteBatchPMO : ISpriteBatch {
 	private uint _ibo;
 
 	private void* _mappedVboPtr = null;
-	private readonly nint[] _fences = new nint[NUM_SEGMENTS];
+	private readonly nint[] _fences;
 	private int _currentSegment;
 
 	private int _bufferedSprites;
 	private bool _isBatching;
 	private bool _isDisposed;
+	private Rectangle? _clip;
+	private ITexture? _texture;
+	private IRenderTarget? _renderTarget;
+	private BlendMode _blendMode;
 
 	public SpriteBatchPMO(
-		GL gl
+		GL gl,
+		GlStateCache stateCache,
+		SpriteBatchOptions? options = null
 	) {
+		options ??= new SpriteBatchOptions();
+
+		// SpriteBatchOptions validates its own values on assignment, so by the time
+		// they reach here they are guaranteed to be within the supported ranges.
+		_maxSpritesPerFrame = options.MaxSpritesPerFrame;
+		_numSegments = options.NumSegments;
+		_frameMaxBytes = (uint)( _maxSpritesPerFrame * VERTICES_PER_SPRITE * STRIDE );
+		_totalBufferBytes = _frameMaxBytes * (uint)_numSegments;
+		_fences = new nint[_numSegments];
+
 		_gl = gl;
-		_shader = new SpriteBatchShader( gl );
+		_shader = new SpriteBatchShader( gl, stateCache );
 		Initialize();
 	}
 
@@ -51,14 +72,14 @@ internal unsafe sealed class SpriteBatchPMO : ISpriteBatch {
 				BufferStorageMask.MapWriteBit
 				| BufferStorageMask.MapPersistentBit;
 
-		_gl.BufferStorage( GLEnum.ArrayBuffer, TOTAL_BUFFER_BYTES, null, storageFlags );
+		_gl.BufferStorage( GLEnum.ArrayBuffer, _totalBufferBytes, null, storageFlags );
 
 		MapBufferAccessMask mapFlags =
 			MapBufferAccessMask.WriteBit
 			| MapBufferAccessMask.PersistentBit
 			| MapBufferAccessMask.FlushExplicitBit;
 
-		_mappedVboPtr = _gl.MapBufferRange( GLEnum.ArrayBuffer, 0, TOTAL_BUFFER_BYTES, mapFlags );
+		_mappedVboPtr = _gl.MapBufferRange( GLEnum.ArrayBuffer, 0, _totalBufferBytes, mapFlags );
 
 		if( _mappedVboPtr == null ) {
 			throw new InvalidOperationException( $"OpenGL failed to map the buffer! GL Error: {_gl.GetError()}" );
@@ -73,8 +94,8 @@ internal unsafe sealed class SpriteBatchPMO : ISpriteBatch {
 		_gl.EnableVertexAttribArray( 2 );
 		_gl.VertexAttribPointer( 2, 4, VertexAttribPointerType.UnsignedByte, true, STRIDE, (void*)COLOUR_OFFSET );
 
-		ushort[] indices = new ushort[MAX_SPRITES_PER_FRAME * 6];
-		for( ushort i = 0; i < MAX_SPRITES_PER_FRAME; i++ ) {
+		ushort[] indices = new ushort[_maxSpritesPerFrame * 6];
+		for( int i = 0; i < _maxSpritesPerFrame; i++ ) {
 			int indexOffset = i * 6;
 			int vertexOffset = i * 4;
 
@@ -100,7 +121,8 @@ internal unsafe sealed class SpriteBatchPMO : ISpriteBatch {
 	void ISpriteBatch.Start(
 		IRenderTarget renderTarget,
 		ITexture texture,
-		BlendMode blendMode
+		BlendMode blendMode,
+		Rectangle? clip
 	) {
 		if( _isBatching ) {
 			return;
@@ -108,11 +130,25 @@ internal unsafe sealed class SpriteBatchPMO : ISpriteBatch {
 		_isBatching = true;
 		_bufferedSprites = 0;
 
-		SyncCurrentSegment();
-
+		// No sync needed here: FlushBatch() always leaves the current segment
+		// waited-on and ready to write (see the sync-on-advance there), and a
+		// freshly constructed batch has no pending fences.
 		_shader.Bind( renderTarget );
 		texture.Bind( TEXTURE_UNIT_0 );
+		_texture = texture;
+		_renderTarget = renderTarget;
+		_blendMode = blendMode;
 		_gl.BindVertexArray( _vao );
+
+		// The clip is batch-scoped. Always set it explicitly (or clear it) so the
+		// batch starts in a deterministic state rather than inheriting whatever
+		// scissor a previous batch left on the target.
+		if( clip.HasValue ) {
+			renderTarget.SetClip( clip.Value );
+		} else {
+			renderTarget.ClearClip();
+		}
+		_clip = clip;
 
 		switch( blendMode ) {
 			case BlendMode.None:
@@ -129,6 +165,26 @@ internal unsafe sealed class SpriteBatchPMO : ISpriteBatch {
 		}
 	}
 
+	// Reserves the slot for the next sprite in the current segment and returns a
+	// pointer to its first vertex. Guards capacity *before* writing: if the current
+	// segment is full it flushes, which rotates to a fresh, already-synced segment.
+	[MethodImpl( MethodImplOptions.AggressiveInlining )]
+	private SpriteVertex* ReserveSprite() {
+		if( !_isBatching ) {
+			throw new InvalidOperationException( "Cannot render before calling Start." );
+		}
+
+		// A segment holds at most _maxSpritesPerFrame sprites; flush before the
+		// write that would overflow it so a slot is always valid.
+		if( _bufferedSprites >= _maxSpritesPerFrame ) {
+			FlushBatch();
+		}
+
+		uint segmentOffsetBytes = (uint)( _currentSegment * _frameMaxBytes );
+		uint spriteOffsetBytes = (uint)( _bufferedSprites * VERTICES_PER_SPRITE * STRIDE );
+		return (SpriteVertex*)( (byte*)_mappedVboPtr + segmentOffsetBytes + spriteOffsetBytes );
+	}
+
 	public void Draw(
 		float x,
 		float y,
@@ -140,17 +196,9 @@ internal unsafe sealed class SpriteBatchPMO : ISpriteBatch {
 		float v2,
 		uint colour
 	) {
-		if( !_isBatching ) {
-			throw new InvalidOperationException( "Cannot render before calling Begin." );
-		}
-
-		uint segmentOffsetBytes = (uint)( _currentSegment * FRAME_MAX_BYTES );
-		uint spriteOffsetBytes = (uint)( _bufferedSprites * VERTICES_PER_SPRITE * STRIDE );
-
-		// Get a direct reference to the active layout offset inside the persistent mapping
-		SpriteVertex* basePtr = (SpriteVertex*)( (byte*)_mappedVboPtr + segmentOffsetBytes + spriteOffsetBytes );
-
-		// Copy the sprite vertex data directly into the mapped buffer region for the current segment.
+		// Reserve a slot (guards capacity and rotates segments if needed) and copy
+		// the sprite vertex data directly into the persistent mapping.
+		SpriteVertex* basePtr = ReserveSprite();
 
 		// Top-Left
 		basePtr[0].X = x;
@@ -181,10 +229,6 @@ internal unsafe sealed class SpriteBatchPMO : ISpriteBatch {
 		basePtr[3].Color = colour;
 
 		_bufferedSprites++;
-
-		if( _bufferedSprites >= MAX_SPRITES_PER_FRAME ) {
-			FlushBatch();
-		}
 	}
 
 	public void Draw(
@@ -201,13 +245,7 @@ internal unsafe sealed class SpriteBatchPMO : ISpriteBatch {
 		float originY,
 		uint colour
 	) {
-		if( !_isBatching ) {
-			throw new InvalidOperationException( "Cannot render before calling Begin." );
-		}
-
-		uint segmentOffsetBytes = (uint)( _currentSegment * FRAME_MAX_BYTES );
-		uint spriteOffsetBytes = (uint)( _bufferedSprites * VERTICES_PER_SPRITE * STRIDE );
-		SpriteVertex* basePtr = (SpriteVertex*)( (byte*)_mappedVboPtr + segmentOffsetBytes + spriteOffsetBytes );
+		SpriteVertex* basePtr = ReserveSprite();
 
 		// Pivot in world space, and the corner offsets relative to it (local space).
 		float pivotX = x + originX;
@@ -250,15 +288,11 @@ internal unsafe sealed class SpriteBatchPMO : ISpriteBatch {
 		basePtr[3].Color = colour;
 
 		_bufferedSprites++;
-
-		if( _bufferedSprites >= MAX_SPRITES_PER_FRAME ) {
-			FlushBatch();
-		}
 	}
 
 	void ISpriteBatch.Finish() {
 		if( !_isBatching ) {
-			throw new InvalidOperationException( "Cannot call End without a matching call to Begin." );
+			throw new InvalidOperationException( "Cannot call Finish without a matching call to Start." );
 		}
 
 		if( _bufferedSprites > 0 ) {
@@ -267,6 +301,31 @@ internal unsafe sealed class SpriteBatchPMO : ISpriteBatch {
 
 		_gl.BindVertexArray( 0 );
 		_isBatching = false;
+		_clip = null;
+		_texture = null;
+		_renderTarget = null;
+	}
+
+	bool ISpriteBatch.Ensure(
+		IRenderTarget renderTarget,
+		ITexture texture,
+		BlendMode blendMode,
+		Rectangle? clip
+	) {
+		ISpriteBatch self = this;
+		if( _isBatching
+			&& ReferenceEquals( _renderTarget, renderTarget )
+			&& _texture is not null && _texture.Id == texture.Id
+			&& _blendMode == blendMode
+			&& _clip == clip ) {
+			return false;
+		}
+
+		if( _isBatching ) {
+			self.Finish();
+		}
+		self.Start( renderTarget, texture, blendMode, clip );
+		return true;
 	}
 
 	private void FlushPending() {
@@ -276,7 +335,7 @@ internal unsafe sealed class SpriteBatchPMO : ISpriteBatch {
 	}
 
 	private void FlushBatch() {
-		uint segmentOffsetBytes = (uint)( _currentSegment * FRAME_MAX_BYTES );
+		uint segmentOffsetBytes = (uint)( _currentSegment * _frameMaxBytes );
 		uint totalVertices = (uint)( _bufferedSprites * VERTICES_PER_SPRITE );
 		uint dataSizeInBytes = totalVertices * STRIDE;
 
@@ -306,7 +365,13 @@ internal unsafe sealed class SpriteBatchPMO : ISpriteBatch {
 		_fences[_currentSegment] = _gl.FenceSync( SyncCondition.SyncGpuCommandsComplete, SyncBehaviorFlags.None );
 
 		_bufferedSprites = 0;
-		_currentSegment = ( _currentSegment + 1 ) % NUM_SEGMENTS;
+		_currentSegment = ( _currentSegment + 1 ) % _numSegments;
+
+		// Sync-on-advance: the segment we just rotated to may still be read by an
+		// in-flight draw submitted NUM_SEGMENTS flushes ago. Wait on its fence now so
+		// every subsequent write (including mid-batch overflow flushes) is safe. This
+		// is the single point that keeps the current segment always ready to write.
+		SyncCurrentSegment();
 	}
 
 	private void SyncCurrentSegment() {
@@ -344,7 +409,7 @@ internal unsafe sealed class SpriteBatchPMO : ISpriteBatch {
 		_gl.DeleteBuffer( _ibo );
 		_gl.DeleteVertexArray( _vao );
 
-		for( int i = 0; i < NUM_SEGMENTS; i++ ) {
+		for( int i = 0; i < _numSegments; i++ ) {
 			if( _fences[i] != 0 ) {
 				_gl.DeleteSync( _fences[i] );
 				_fences[i] = 0;
@@ -361,44 +426,4 @@ internal unsafe sealed class SpriteBatchPMO : ISpriteBatch {
 		}
 
 	}
-
-	void ISpriteBatch.Draw( float x, float y, float width, float height, ISubTexture subTexture, uint colour ) {
-		if (subTexture.Texture.Filter == TextureFilter.Linear) {
-			Draw( x, y, width, height, subTexture.U1 + subTexture.Texture.HalfX, subTexture.V1 + subTexture.Texture.HalfY, subTexture.U2 - subTexture.Texture.HalfX, subTexture.V2 - subTexture.Texture.HalfY, colour );
-		} else {
-			Draw( x, y, width, height, subTexture.U1, subTexture.V1, subTexture.U2, subTexture.V2, colour );
-		}
-	}
-
-	void ISpriteBatch.Draw( float x, float y, ISubTexture subTexture, uint colour ) {
-		if (subTexture.Texture.Filter == TextureFilter.Linear) {
-			Draw( x, y, subTexture.Width, subTexture.Height, subTexture.U1 + subTexture.Texture.HalfX, subTexture.V1 + subTexture.Texture.HalfY, subTexture.U2 - subTexture.Texture.HalfX, subTexture.V2 - subTexture.Texture.HalfY, colour );
-		} else {
-			Draw( x, y, subTexture.Width, subTexture.Height, subTexture.U1, subTexture.V1, subTexture.U2, subTexture.V2, colour );
-		}
-	}
-
-	void ISpriteBatch.Draw( float x, float y, float width, float height, ISubTexture subTexture, float rotation, uint colour ) {
-		if (subTexture.Texture.Filter == TextureFilter.Linear) {
-			Draw( x, y, width, height, subTexture.U1 + subTexture.Texture.HalfX, subTexture.V1 + subTexture.Texture.HalfY, subTexture.U2 - subTexture.Texture.HalfX, subTexture.V2 - subTexture.Texture.HalfY, rotation, width * 0.5f, height * 0.5f, colour );
-		} else {
-			Draw( x, y, width, height, subTexture.U1, subTexture.V1, subTexture.U2, subTexture.V2, rotation, width * 0.5f, height * 0.5f, colour );
-		}
-	}
-
-	void ISpriteBatch.Draw( float x, float y, ISubTexture subTexture, float rotation, uint colour ) {
-		if (subTexture.Texture.Filter == TextureFilter.Linear) {
-			Draw( x, y, subTexture.Width, subTexture.Height, subTexture.U1 + subTexture.Texture.HalfX, subTexture.V1 + subTexture.Texture.HalfY, subTexture.U2 - subTexture.Texture.HalfX, subTexture.V2 - subTexture.Texture.HalfY, rotation, subTexture.Width * 0.5f, subTexture.Height * 0.5f, colour );
-		} else {
-			Draw( x, y, subTexture.Width, subTexture.Height, subTexture.U1, subTexture.V1, subTexture.U2, subTexture.V2, rotation, subTexture.Width * 0.5f, subTexture.Height * 0.5f, colour );
-		}
-	}
-	void ISpriteBatch.Draw( float x, float y, float width, float height, ISubTexture subTexture, float rotation, float originX, float originY, uint colour ) {
-		if (subTexture.Texture.Filter == TextureFilter.Linear) {
-			Draw( x, y, width, height, subTexture.U1 + subTexture.Texture.HalfX, subTexture.V1 + subTexture.Texture.HalfY, subTexture.U2 - subTexture.Texture.HalfX, subTexture.V2 - subTexture.Texture.HalfY, rotation, originX, originY, colour );
-		} else {
-			Draw( x, y, width, height, subTexture.U1, subTexture.V1, subTexture.U2, subTexture.V2, rotation, originX, originY, colour );
-		}
-	}
-
 }

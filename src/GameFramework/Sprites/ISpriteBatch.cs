@@ -5,8 +5,19 @@ namespace GameFramework.Sprites;
 
 
 public interface ISpriteBatch : IDisposable {
-	void Start( IRenderTarget renderTarget, ITexture texture, BlendMode blendMode = BlendMode.Premultiplied );
+	// The optional clip rectangle is applied to the render target for the entire
+	// batch. It is batch-scoped and immutable: to change the clip, Finish() the
+	// current batch and Start() a new one. Passing null leaves the batch unclipped
+	// (and clears any clip a previous batch may have left on the target).
+	void Start( IRenderTarget renderTarget, ITexture texture, BlendMode blendMode = BlendMode.Premultiplied, Rectangle? clip = null );
 	void Finish();
+
+	// Ensures the batch is active with exactly the given parameters. If a batch is
+	// already running with the same renderTarget, texture (by Id), blendMode and
+	// clip, this does nothing and returns false. Otherwise it Finish()es any current
+	// batch and Start()s a new one, returning true. Lets consumers avoid hand-rolling
+	// the "did anything change?" checks before every Start.
+	bool Ensure( IRenderTarget renderTarget, ITexture texture, BlendMode blendMode = BlendMode.Premultiplied, Rectangle? clip = null );
 
 	// Methods that perform actual drawing
 	// -----------------------------------
@@ -16,9 +27,9 @@ public interface ISpriteBatch : IDisposable {
 	// Helper methods for drawing
 	// --------------------------
 	void Draw( float x, float y, float width, float height, ISubTexture subTexture, uint colour ) => Draw( x, y, width, height, subTexture.U1, subTexture.V1, subTexture.U2, subTexture.V2, colour );
-	void Draw( float x, float y, ISubTexture subTexture, uint colour ) => Draw( x, y, subTexture.Width, subTexture.Height, subTexture.U1, subTexture.V1, subTexture.U2, subTexture.V2, colour );
+	void Draw( float x, float y, ISubTexture subTexture, uint colour ) => Draw( x, y, subTexture.Size.Width, subTexture.Size.Height, subTexture.U1, subTexture.V1, subTexture.U2, subTexture.V2, colour );
 	void Draw( float x, float y, float width, float height, ISubTexture subTexture, float rotation, uint colour ) => Draw( x, y, width, height, subTexture.U1, subTexture.V1, subTexture.U2, subTexture.V2, rotation, width * 0.5f, height * 0.5f, colour );
-	void Draw( float x, float y, ISubTexture subTexture, float rotation, uint colour ) => Draw( x, y, subTexture.Width, subTexture.Height, subTexture.U1, subTexture.V1, subTexture.U2, subTexture.V2, rotation, subTexture.Width * 0.5f, subTexture.Height * 0.5f, colour );
+	void Draw( float x, float y, ISubTexture subTexture, float rotation, uint colour ) => Draw( x, y, subTexture.Size.Width, subTexture.Size.Height, subTexture.U1, subTexture.V1, subTexture.U2, subTexture.V2, rotation, subTexture.Size.Width * 0.5f, subTexture.Size.Height * 0.5f, colour );
 	void Draw( float x, float y, float width, float height, ISubTexture subTexture, float rotation, float originX, float originY, uint colour ) => Draw( x, y, width, height, subTexture.U1, subTexture.V1, subTexture.U2, subTexture.V2, rotation, originX, originY, colour );
 
 	// Methods to draw clipped sprites
@@ -47,6 +58,6 @@ public interface ISpriteBatch : IDisposable {
 		Draw( left, top, right - left, bottom - top, u1, v1, u2, v2, colour );
 	}
 
-	void Draw( float x, float y, ISubTexture subTexture, Rectangle clip, uint colour ) => Draw( x, y, subTexture.Width, subTexture.Height, subTexture, clip, colour );
+	void Draw( float x, float y, ISubTexture subTexture, Rectangle clip, uint colour ) => Draw( x, y, subTexture.Size.Width, subTexture.Size.Height, subTexture, clip, colour );
 
 }

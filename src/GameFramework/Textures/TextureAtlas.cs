@@ -4,10 +4,9 @@ using StbRectPackSharp;
 
 namespace GameFramework.Textures;
 
-
 internal sealed class TextureAtlas : ITextureAtlas {
 
-	public const int MinBlockSize = 48;
+	public const int GutterSize = 2;
 
 	private readonly Packer _packer;
 	private readonly Dictionary<string, SubTexture> _registry;
@@ -21,21 +20,24 @@ internal sealed class TextureAtlas : ITextureAtlas {
 	) {
 		_texture = texture;
 		_packer = new Packer(
-			texture.TextureWidth,
-			texture.TextureHeight
+			texture.TextureSize.Width,
+			texture.TextureSize.Height
 		);
 		_registry = [];
 	}
 
+	ITexture ITextureAtlas.Texture => _texture;
+
 	public ISubTexture Create(
 		string id,
 		IFont font,
 		ReadOnlySpan<byte> text,
 		uint colour = uint.MaxValue
 	) {
-		font.MeasureText( text, 0, out int width, out int height );
-		SubTexture subTexture = Insert( id, width, height );
-		font.DrawText( _texture, text, subTexture.Left, subTexture.Top, colour );
+		Dimension size = font.MeasureText( text, 0 );
+		SubTexture subTexture = Insert( id, size );
+		font.DrawText( _texture, text, subTexture.Position, colour );
+		ExtrudeGutter( subTexture );
 
 		return subTexture;
 	}
@@ -46,9 +48,10 @@ internal sealed class TextureAtlas : ITextureAtlas {
 		string text,
 		uint colour = uint.MaxValue
 	) {
-		font.MeasureText( text, 0, out int width, out int height );
-		SubTexture subTexture = Insert( id, width, height );
-		font.DrawText( _texture, text, subTexture.Left, subTexture.Top, colour );
+		Dimension size = font.MeasureText( text, 0 );
+		SubTexture subTexture = Insert( id, size );
+		font.DrawText( _texture, text, subTexture.Position, colour );
+		ExtrudeGutter( subTexture );
 
 		return subTexture;
 	}
@@ -61,9 +64,10 @@ internal sealed class TextureAtlas : ITextureAtlas {
 		uint outlineColour = 255,
 		int outlineWidth = 1
 	) {
-		font.MeasureText( text, outlineWidth, out int width, out int height );
-		ISubTexture subTexture = Insert( id, width, height );
-		font.DrawOutlinedText( _texture, text, subTexture.Left, subTexture.Top, textColour, outlineColour, outlineWidth );
+		Dimension size = font.MeasureText( text, outlineWidth );
+		SubTexture subTexture = Insert( id, size );
+		font.DrawOutlinedText( _texture, text, subTexture.Position, textColour, outlineColour, outlineWidth );
+		ExtrudeGutter( subTexture );
 
 		return subTexture;
 	}
@@ -76,9 +80,10 @@ internal sealed class TextureAtlas : ITextureAtlas {
 		uint outlineColour = 255,
 		int outlineWidth = 1
 	) {
-		font.MeasureText( text, outlineWidth, out int width, out int height );
-		ISubTexture subTexture = Insert( id, width, height );
-		font.DrawOutlinedText( _texture, text, subTexture.Left, subTexture.Top, textColour, outlineColour, outlineWidth );
+		Dimension size = font.MeasureText( text, outlineWidth );
+		SubTexture subTexture = Insert( id, size );
+		font.DrawOutlinedText( _texture, text, subTexture.Position, textColour, outlineColour, outlineWidth );
+		ExtrudeGutter( subTexture );
 
 		return subTexture;
 	}
@@ -86,13 +91,12 @@ internal sealed class TextureAtlas : ITextureAtlas {
 	public ISubTexture Create(
 		string id,
 		ITexture source,
-		int sourceX,
-		int sourceY,
-		int sourceWidth,
-		int sourceHeight
+		Coordinate sourcePosition,
+		Dimension sourceSize
 	) {
-		ISubTexture subTexture = Insert( id, sourceWidth, sourceHeight );
-		_texture.Copy( subTexture.Left, subTexture.Top, source, sourceX, sourceY, sourceWidth, sourceHeight );
+		SubTexture subTexture = Insert( id, sourceSize );
+		_texture.Copy( subTexture.Position, source, sourcePosition, sourceSize );
+		ExtrudeGutter( subTexture );
 		return subTexture;
 	}
 
@@ -102,13 +106,11 @@ internal sealed class TextureAtlas : ITextureAtlas {
 		ReadOnlySpan<byte> text,
 		uint colour = uint.MaxValue
 	) {
-		font.MeasureText( text, 0, out int width, out int height );
+		Dimension size = font.MeasureText( text, 0 );
 		SubTexture subTexture = _registry[id];
-		if( width > subTexture.AllocatedWidth || height > subTexture.AllocatedHeight ) {
-			throw new InvalidOperationException( "Updated text dimensions exceed the allocated sprite dimensions." );
-		}
-		subTexture.Update( subTexture.Left, subTexture.Top, width, height );
-		font.DrawText( _texture, text, subTexture.Left, subTexture.Top, colour );
+		PrepareUpdate( subTexture, size );
+		font.DrawText( _texture, text, subTexture.Position, colour );
+		ExtrudeGutter( subTexture );
 	}
 
 	public void Update(
@@ -117,13 +119,11 @@ internal sealed class TextureAtlas : ITextureAtlas {
 		string text,
 		uint colour = uint.MaxValue
 	) {
-		font.MeasureText( text, 0, out int width, out int height );
+		Dimension size = font.MeasureText( text, 0 );
 		SubTexture subTexture = _registry[id];
-		if( width > subTexture.AllocatedWidth || height > subTexture.AllocatedHeight ) {
-			throw new InvalidOperationException( "Updated text dimensions exceed the allocated sprite dimensions." );
-		}
-		subTexture.Update( subTexture.Left, subTexture.Top, width, height );
-		font.DrawText( _texture, text, subTexture.Left, subTexture.Top, colour );
+		PrepareUpdate( subTexture, size );
+		font.DrawText( _texture, text, subTexture.Position, colour );
+		ExtrudeGutter( subTexture );
 	}
 
 	public void Update(
@@ -134,13 +134,11 @@ internal sealed class TextureAtlas : ITextureAtlas {
 		uint outlineColour = 255,
 		int outlineWidth = 1
 	) {
-		font.MeasureText( text, outlineWidth, out int width, out int height );
+		Dimension size = font.MeasureText( text, outlineWidth );
 		SubTexture subTexture = _registry[id];
-		if( width > subTexture.AllocatedWidth || height > subTexture.AllocatedHeight ) {
-			throw new InvalidOperationException( "Updated text dimensions exceed the allocated sprite dimensions." );
-		}
-
-		font.DrawOutlinedText( _texture, text, subTexture.Left, subTexture.Top, textColour, outlineColour, outlineWidth );
+		PrepareUpdate( subTexture, size );
+		font.DrawOutlinedText( _texture, text, subTexture.Position, textColour, outlineColour, outlineWidth );
+		ExtrudeGutter( subTexture );
 	}
 
 	public void Update(
@@ -151,24 +149,23 @@ internal sealed class TextureAtlas : ITextureAtlas {
 		uint outlineColour = 255,
 		int outlineWidth = 1
 	) {
-		font.MeasureText( text, outlineWidth, out int width, out int height );
+		Dimension size = font.MeasureText( text, outlineWidth );
 		SubTexture subTexture = _registry[id];
-		if( width > subTexture.AllocatedWidth || height > subTexture.AllocatedHeight ) {
-			throw new InvalidOperationException( "Updated text dimensions exceed the allocated sprite dimensions." );
-		}
-
-		font.DrawOutlinedText( _texture, text, subTexture.Left, subTexture.Top, textColour, outlineColour, outlineWidth );
+		PrepareUpdate( subTexture, size );
+		font.DrawOutlinedText( _texture, text, subTexture.Position, textColour, outlineColour, outlineWidth );
+		ExtrudeGutter( subTexture );
 	}
 
 	public void Update(
 		string id,
 		ITexture source,
-		int sourceX,
-		int sourceY,
-		int sourceW,
-		int sourceH
+		Coordinate sourcePosition,
+		Dimension sourceSize
 	) {
-		throw new NotImplementedException();
+		SubTexture subTexture = _registry[id];
+		PrepareUpdate( subTexture, sourceSize );
+		_texture.Copy( subTexture.Position, source, sourcePosition, sourceSize );
+		ExtrudeGutter( subTexture );
 	}
 
 	public void Dispose() {
@@ -183,28 +180,25 @@ internal sealed class TextureAtlas : ITextureAtlas {
 
 	private SubTexture Insert(
 		string name,
-		int width,
-		int height
+		Dimension size
 	) {
 		if( _registry.TryGetValue( name, out SubTexture? cached ) ) {
 			return cached;
 		}
 
-		// Quantize size to reduce fragmentation
-		int allocatedWidth = ( width + MinBlockSize - 1 ) / MinBlockSize * MinBlockSize;
-		int allocatedHeight = ( height + MinBlockSize - 1 ) / MinBlockSize * MinBlockSize;
-
-		PackerRectangle result = AllocateSpace( allocatedWidth, allocatedHeight );
+		Dimension storedSize = new(
+			size.Width + ( GutterSize * 2 ),
+			size.Height + ( GutterSize * 2 )
+		);
+		PackerRectangle result = AllocateSpace( storedSize );
 
 		SubTexture subTexture = new SubTexture(
 			name,
 			_texture,
-			result.X,
-			result.Y,
-			width,
-			height,
-			result.Width,
-			result.Height
+			new Coordinate( result.X + GutterSize, result.Y + GutterSize ),
+			size,
+			new Coordinate( result.X, result.Y ),
+			new Dimension( result.Width, result.Height )
 		);
 
 		_registry.Add( name, subTexture );
@@ -212,11 +206,51 @@ internal sealed class TextureAtlas : ITextureAtlas {
 		return subTexture;
 	}
 
-	private PackerRectangle AllocateSpace(
-		int width,
-		int height
+	private static void EnsureFitsStoredArea(
+		SubTexture subTexture,
+		Dimension size
 	) {
-		PackerRectangle result = _packer.PackRect( width, height, null );
+		Dimension usableSize = new(
+			subTexture.StoredSize.Width - ( GutterSize * 2 ),
+			subTexture.StoredSize.Height - ( GutterSize * 2 )
+		);
+		if( size.Width > usableSize.Width || size.Height > usableSize.Height ) {
+			throw new InvalidOperationException( "Updated texture dimensions exceed the stored texture area." );
+		}
+	}
+
+	private void PrepareUpdate(
+		SubTexture subTexture,
+		Dimension size
+	) {
+		EnsureFitsStoredArea( subTexture, size );
+		_texture.Clear( subTexture.StoredPosition, subTexture.StoredSize, 0 );
+		subTexture.Update( subTexture.Position, size );
+	}
+
+	private void ExtrudeGutter(
+		SubTexture subTexture
+	) {
+		if( _texture.Filter == TextureFilter.Nearest || subTexture.Size.Width <= 0 || subTexture.Size.Height <= 0 ) {
+			return;
+		}
+
+		for( int offset = 1; offset <= GutterSize; offset++ ) {
+			_texture.Copy( new Coordinate( subTexture.Position.X - offset, subTexture.Position.Y ), _texture, subTexture.Position, new Dimension( 1, subTexture.Size.Height ) );
+			_texture.Copy( new Coordinate( subTexture.Position.X + subTexture.Size.Width - 1 + offset, subTexture.Position.Y ), _texture, new Coordinate( subTexture.Position.X + subTexture.Size.Width - 1, subTexture.Position.Y ), new Dimension( 1, subTexture.Size.Height ) );
+		}
+
+		Dimension extrudedRowSize = new( subTexture.Size.Width + ( GutterSize * 2 ), 1 );
+		for( int offset = 1; offset <= GutterSize; offset++ ) {
+			_texture.Copy( new Coordinate( subTexture.StoredPosition.X, subTexture.Position.Y - offset ), _texture, new Coordinate( subTexture.StoredPosition.X, subTexture.Position.Y ), extrudedRowSize );
+			_texture.Copy( new Coordinate( subTexture.StoredPosition.X, subTexture.Position.Y + subTexture.Size.Height - 1 + offset ), _texture, new Coordinate( subTexture.StoredPosition.X, subTexture.Position.Y + subTexture.Size.Height - 1 ), extrudedRowSize );
+		}
+	}
+
+	private PackerRectangle AllocateSpace(
+		Dimension size
+	) {
+		PackerRectangle result = _packer.PackRect( size.Width, size.Height, null );
 		if( result != null ) {
 			return result;
 		}

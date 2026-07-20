@@ -1,6 +1,6 @@
 ﻿namespace GameFramework.Scenes;
 
-public interface ISceneNodeHandler {
+public interface ISceneMouseHandler {
 	// Default implementations for actions require no code block body
 	void OnMousePressed( SceneNode node, int button ) { }
 	void OnMouseReleased( SceneNode node, int button ) { }

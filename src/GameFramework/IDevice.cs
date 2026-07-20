@@ -1,5 +1,4 @@
 ﻿using GameFramework.Fonts;
-using GameFramework.Sprites;
 using GameFramework.Textures;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -23,18 +22,19 @@ public interface IDevice {
 		TextureFilter filter = TextureFilter.Linear
 	);
 
-/*
-	IFramebuffer CreateFramebuffer(
-		int width,
-		int height,
+	IRenderTexture CreateRenderTexture(
+		Dimension size,
 		TextureFilter filter = TextureFilter.Nearest
 	);
 
-	ISpriteAtlas CreateSpriteAtlas(
-		ITexture texture,
-		ISpriteBatch spriteBatch
+	ITextureAtlas CreateTextureAtlas(
+		ITexture texture
 	);
-	*/
+
+	ITextureAtlas CreateTextureAtlas(
+		Dimension size,
+		TextureFilter filter = TextureFilter.Nearest
+	);
 
 	void Run();
 }

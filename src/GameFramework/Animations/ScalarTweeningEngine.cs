@@ -9,7 +9,7 @@ public class ScalarTweeningEngine : ITweeningEngine {
 	private readonly float[] _current;
 	private readonly float[] _progress;
 	private readonly float[] _speed;
-	private readonly EaseType[] _easeTypes;
+	private readonly Easing[] _easeTypes;
 	private readonly int[] _generation; // Bumped when a slot is reused so stale handles are detectable
 
 	public ScalarTweeningEngine(
@@ -21,7 +21,7 @@ public class ScalarTweeningEngine : ITweeningEngine {
 		_current = new float[capacity];
 		_progress = new float[capacity];
 		_speed = new float[capacity];
-		_easeTypes = new EaseType[capacity];
+		_easeTypes = new Easing[capacity];
 		_generation = new int[capacity];
 
 		// A slot is "free" once its progress reaches 1.0. Seed every slot at 1.0 so
@@ -34,7 +34,7 @@ public class ScalarTweeningEngine : ITweeningEngine {
 		float start,
 		float target,
 		TimeSpan duration,
-		EaseType ease
+		Easing ease
 	) {
 		ArgumentOutOfRangeException.ThrowIfLessThanOrEqual( duration, TimeSpan.Zero, nameof( duration ) );
 
@@ -71,8 +71,8 @@ public class ScalarTweeningEngine : ITweeningEngine {
 
 			float t = _progress[i];
 			float easedT = _easeTypes[i] switch {
-				EaseType.QuadIn => t * t,
-				EaseType.QuadOut => t * ( 2.0f - t ),
+				Easing.QuadIn => t * t,
+				Easing.QuadOut => t * ( 2.0f - t ),
 				_ => t
 			};
 

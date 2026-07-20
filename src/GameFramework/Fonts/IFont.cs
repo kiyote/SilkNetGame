@@ -5,8 +5,7 @@ public interface IFont : IDisposable {
 	void DrawOutlinedText(
 		ITexture framebuffer,
 		ReadOnlySpan<byte> text,
-		int x,
-		int y,
+		Coordinate position,
 		uint textColour = 0xFFFFFFFF,
 		uint outlineColour = 0x000000FF,
 		int outlineThickness = 1
@@ -15,23 +14,19 @@ public interface IFont : IDisposable {
 	void DrawText(
 		ITexture framebuffer,
 		ReadOnlySpan<byte> text,
-		int x,
-		int y,
+		Coordinate position,
 		uint colour = 0xFFFFFFFF
 	);
 
-	void MeasureText(
+	Dimension MeasureText(
 		ReadOnlySpan<byte> text,
-		int outlineWidth,
-		out int width,
-		out int height
+		int outlineWidth
 	);
 
 	void DrawOutlinedText(
 		ITexture framebuffer,
 		string text,
-		int x,
-		int y,
+		Coordinate position,
 		uint textColour = 0xFFFFFFFF,
 		uint outlineColour = 0x000000FF,
 		int outlineThickness = 1
@@ -40,15 +35,12 @@ public interface IFont : IDisposable {
 	void DrawText(
 		ITexture framebuffer,
 		string text,
-		int x,
-		int y,
+		Coordinate position,
 		uint colour = 0xFFFFFFFF
 	);
 
-	void MeasureText(
+	Dimension MeasureText(
 		string text,
-		int outlineWidth,
-		out int width,
-		out int height
+		int outlineWidth
 	);
 }

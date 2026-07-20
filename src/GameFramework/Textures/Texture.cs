@@ -6,8 +6,8 @@ namespace GameFramework.Textures;
 
 internal sealed class Texture : ITexture {
 	private readonly GL _gl;
-	private readonly int _width;
-	private readonly int _height;
+	private readonly GlStateCache _stateCache;
+	private readonly Dimension _size;
 
 	private readonly uint _id;
 	private readonly string _name;
@@ -20,6 +20,7 @@ internal sealed class Texture : ITexture {
 
 	internal Texture(
 		GL gl,
+		GlStateCache stateCache,
 		string textureFile,
 		bool premultiplyAlpha = true,
 		TextureFilter filter = TextureFilter.Linear
@@ -29,21 +30,20 @@ internal sealed class Texture : ITexture {
 		}
 		_filter = filter;
 		_gl = gl;
+		_stateCache = stateCache;
 
 		ImageResult image = ImageLoader.Load(
 			textureFile,
 			premultiplyAlpha
 		);
 
-		_width = image.Width;
-		_height = image.Height;
-		_halfX = 0.5f / _width;
-		_halfY = 0.5f / _height;
+		_size = new Dimension( image.Width, image.Height );
+		_halfX = 0.5f / _size.Width;
+		_halfY = 0.5f / _size.Height;
 
 		_id = _gl.GenTexture();
 		_name = _id.ToString( CultureInfo.InvariantCulture );
-		_gl.ActiveTexture( TextureUnit.Texture0 );
-		_gl.BindTexture( TextureTarget.Texture2D, _id );
+		_stateCache.BindTexture( 0, _id );
 		_gl.PixelStore( PixelStoreParameter.UnpackAlignment, 1 );
 
 		unsafe {
@@ -67,13 +67,13 @@ internal sealed class Texture : ITexture {
 		_gl.TexParameter( TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)filter );
 		_gl.TexParameter( TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)filter );
 
-		_gl.BindTexture( TextureTarget.Texture2D, 0 );
+		_stateCache.BindTexture( 0, 0 );
 	}
 
 	internal Texture(
 		GL gl,
-		int width,
-		int height,
+		GlStateCache stateCache,
+		Dimension size,
 		TextureFilter filter
 	) {
 		if( filter == TextureFilter.Unknown ) {
@@ -81,22 +81,20 @@ internal sealed class Texture : ITexture {
 		}
 		_filter = filter;
 
-		_width = width;
-		_height = height;
-		_halfX = 0.5f / _width;
-		_halfY = 0.5f / _height;
+		_size = size;
+		_halfX = 0.5f / size.Width;
+		_halfY = 0.5f / size.Height;
 		uint texture = gl.GenTexture();
 
-		gl.ActiveTexture( TextureUnit.Texture0 );
-		gl.BindTexture( TextureTarget.Texture2D, texture );
+		stateCache.BindTexture( 0, texture );
 
 		unsafe {
 			gl.TexImage2D(
 				TextureTarget.Texture2D,
 				0,
 				InternalFormat.Rgba8,
-				(uint)width,
-				(uint)height,
+					(uint)size.Width,
+					(uint)size.Height,
 				0,
 				PixelFormat.Rgba,
 				PixelType.UnsignedByte,
@@ -109,9 +107,10 @@ internal sealed class Texture : ITexture {
 		gl.TexParameter( TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)filter );
 		gl.TexParameter( TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)filter );
 
-		gl.BindTexture( TextureTarget.Texture2D, 0 );
+		stateCache.BindTexture( 0, 0 );
 
 		_gl = gl;
+		_stateCache = stateCache;
 		_id = texture;
 		_name = _id.ToString( CultureInfo.InvariantCulture );
 
@@ -119,23 +118,17 @@ internal sealed class Texture : ITexture {
 
 	uint ITexture.Id => _id;
 
-	int ITexture.TextureWidth => _width;
-
-	int ITexture.TextureHeight => _height;
+	Dimension ITexture.TextureSize => _size;
 
 	string ISubTexture.Name => _name;
 
-	int ISubTexture.Left => 0;
+	Coordinate ISubTexture.Position => default;
 
-	int ISubTexture.Top => 0;
+	Dimension ISubTexture.Size => _size;
 
-	int ISubTexture.Width => _width;
+	Coordinate ISubTexture.StoredPosition => default;
 
-	int ISubTexture.Height => _height;
-
-	int ISubTexture.AllocatedWidth => _width;
-
-	int ISubTexture.AllocatedHeight => _height;
+	Dimension ISubTexture.StoredSize => _size;
 
 	float ISubTexture.U1 => 0.0f;
 
@@ -159,40 +152,76 @@ internal sealed class Texture : ITexture {
 
 	public ISubTexture CreateSubTexture(
 		string name,
-		int left,
-		int top,
-		int width,
-		int height
+		Coordinate position,
+		Dimension size
 	) {
-		return new SubTexture( name, this, left, top, width, height, _width, _height );
+		return new SubTexture( name, this, position, size, position, size );
+	}
+
+	public void Clear(
+		Coordinate position,
+		Dimension size,
+		uint colour = 0
+	) {
+		ObjectDisposedException.ThrowIf( _isDisposed, this );
+		ArgumentOutOfRangeException.ThrowIfNegative( position.X );
+		ArgumentOutOfRangeException.ThrowIfNegative( position.Y );
+		ArgumentOutOfRangeException.ThrowIfNegative( size.Width );
+		ArgumentOutOfRangeException.ThrowIfNegative( size.Height );
+
+		if( position.X > _size.Width - size.Width || position.Y > _size.Height - size.Height ) {
+			throw new ArgumentException( "The clear area exceeds the texture bounds." );
+		}
+		if( size.Width == 0 || size.Height == 0 ) {
+			return;
+		}
+
+		unsafe {
+			byte* clearColour = stackalloc byte[4];
+			clearColour[0] = (byte)( colour >> 24 );
+			clearColour[1] = (byte)( colour >> 16 );
+			clearColour[2] = (byte)( colour >> 8 );
+			clearColour[3] = (byte)colour;
+
+			_gl.ClearTexSubImage(
+				_id,
+				0,
+				position.X,
+				position.Y,
+				0,
+				(uint)size.Width,
+				(uint)size.Height,
+				1,
+				PixelFormat.Rgba,
+				PixelType.UnsignedByte,
+				clearColour
+			);
+		}
 	}
 
 	public void Copy(
-		int x,
-		int y,
+		Coordinate position,
 		ITexture source,
-		int sourceX,
-		int sourceY,
-		int sourceWidth,
-		int sourceHeight
+		Coordinate sourcePosition,
+		Dimension sourceSize
 	) {
 		_gl.CopyImageSubData(
 			srcName: source.Id,          // ID of the source texture
 			srcTarget: (GLEnum)TextureTarget.Texture2D, // Source target type
 			srcLevel: 0,                       // Source mipmap level
-			srcX: sourceX,                          // Starting X coordinate in source
-			srcY: sourceY,                          // Starting Y coordinate in source
+			srcX: sourcePosition.X,                          // Starting X coordinate in source
+			srcY: sourcePosition.Y,                          // Starting Y coordinate in source
 			srcZ: 0,                           // Starting Z coordinate (0 for 2D)
 
 			dstName: _id,            // ID of the destination texture
 			dstTarget: (GLEnum)TextureTarget.Texture2D, // Destination target type
 			dstLevel: 0,                       // Destination mipmap level
-			dstX: x,                         // Insertion X coordinate in destination
-			dstY: y,                         // Insertion Y coordinate in destination
+			dstX: position.X,                         // Insertion X coordinate in destination
+			dstY: position.Y,                         // Insertion Y coordinate in destination
 			dstZ: 0,                           // Insertion Z coordinate (0 for 2D)
 
-			srcWidth: (uint)sourceWidth,                     // Width of the portion to copy
-			srcHeight: (uint)sourceHeight,                    // Height of the portion to copy
+			srcWidth: (uint)sourceSize.Width,                     // Width of the portion to copy
+			srcHeight: (uint)sourceSize.Height,                    // Height of the portion to copy
 			srcDepth: 1                        // Depth of the portion to copy (1 for 2D)
 		);
 	}
@@ -201,8 +230,7 @@ internal sealed class Texture : ITexture {
 		int textureUnit
 	) {
 		if( !_isDisposed ) {
-			_gl.ActiveTexture( (TextureUnit)( (int)TextureUnit.Texture0 + textureUnit ) );
-			_gl.BindTexture( TextureTarget.Texture2D, _id );
+			_stateCache.BindTexture( textureUnit, _id );
 		} else {
 			throw new ObjectDisposedException( nameof( Texture ) );
 		}
@@ -219,10 +247,8 @@ internal sealed class Texture : ITexture {
 	}
 
 	void ISubTexture.Update(
-		int left,
-		int top,
-		int width,
-		int height
+		Coordinate position,
+		Dimension size
 	) {
 		// Do nothing, as this is a full texture and cannot be updated like a subtexture.
 	}
@@ -231,7 +257,7 @@ internal sealed class Texture : ITexture {
 		if( other is null ) {
 			return false;
 		}
-		return other.Name == _name && other.Left == 0 && other.Top == 0 && other.Width == _width && other.Height == _height;
+		return other.Name == _name && other.Position == default && other.Size == _size;
 	}
 
 	~Texture() {

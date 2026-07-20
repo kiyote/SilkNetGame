@@ -5,17 +5,13 @@ public interface ISubTexture : IEquatable<ISubTexture> {
 
 	string Name { get; }
 
-	int Left { get; }
+	Coordinate Position { get; }
 
-	int Top { get; }
+	Dimension Size { get; }
 
-	int Width { get; }
+	Coordinate StoredPosition { get; }
 
-	int Height { get; }
-
-	int AllocatedWidth { get; }
-
-	int AllocatedHeight { get; }
+	Dimension StoredSize { get; }
 
 	ITexture Texture { get; }
 
@@ -28,9 +24,7 @@ public interface ISubTexture : IEquatable<ISubTexture> {
 	float V2 { get; }
 
 	void Update(
-		int left,
-		int top,
-		int width,
-		int height
+		Coordinate position,
+		Dimension size
 	);
 }
