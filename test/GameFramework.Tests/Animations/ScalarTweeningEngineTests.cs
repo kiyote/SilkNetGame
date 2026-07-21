@@ -242,4 +242,76 @@ internal sealed class ScalarTweeningEngineTests {
 			Assert.That( engine.IsComplete( reused ), Is.False );
 		}
 	}
+
+	[Test]
+	public void Update_LoopMode_WrapsPastEndAndRepeats() {
+		ITweeningEngine engine = new ScalarTweeningEngine( 1 );
+		TweenHandle handle = engine.StartTween( 0.0f, 10.0f, TimeSpan.FromSeconds( 1.0 ), Easing.Linear, LoopMode.Loop );
+
+		engine.Update( 0.9f ); // progress 0.9 -> 9.0
+		using( Assert.EnterMultipleScope() ) {
+			Assert.That( engine.TryGetCurrentValue( handle, out float v1 ), Is.True );
+			Assert.That( v1, Is.EqualTo( 9.0f ).Within( 0.01f ) );
+			Assert.That( engine.IsComplete( handle ), Is.False );
+		}
+
+		engine.Update( 0.5f ); // progress 1.4 wraps to 0.4 -> 4.0
+		using( Assert.EnterMultipleScope() ) {
+			Assert.That( engine.TryGetCurrentValue( handle, out float v2 ), Is.True );
+			Assert.That( v2, Is.EqualTo( 4.0f ).Within( 0.01f ) );
+			// A looping tween never completes on its own.
+			Assert.That( engine.IsComplete( handle ), Is.False );
+		}
+	}
+
+	[Test]
+	public void Update_LoopMode_SlotStaysOccupiedUntilCancelled() {
+		ITweeningEngine engine = new ScalarTweeningEngine( 1 );
+		TweenHandle handle = engine.StartTween( 0.0f, 10.0f, TimeSpan.FromSeconds( 1.0 ), Easing.Linear, LoopMode.Loop );
+
+		// Drive it well past a full cycle; the single slot must remain claimed.
+		for( int i = 0; i < 5; i++ ) {
+			engine.Update( 0.5f );
+		}
+		Assert.Throws<InvalidOperationException>( () => engine.StartTween( 0.0f, 1.0f, TimeSpan.FromSeconds( 1.0 ), Easing.Linear ) );
+
+		// Cancelling frees the slot and invalidates the handle.
+		using( Assert.EnterMultipleScope() ) {
+			Assert.That( engine.TryCancel( handle, out _ ), Is.True );
+			Assert.That( engine.IsComplete( handle ), Is.True );
+		}
+		Assert.DoesNotThrow( () => engine.StartTween( 0.0f, 1.0f, TimeSpan.FromSeconds( 1.0 ), Easing.Linear ) );
+	}
+
+	[Test]
+	public void Update_BounceMode_PingPongsBetweenStartAndTarget() {
+		ITweeningEngine engine = new ScalarTweeningEngine( 1 );
+		TweenHandle handle = engine.StartTween( 0.0f, 10.0f, TimeSpan.FromSeconds( 1.0 ), Easing.Linear, LoopMode.Bounce );
+
+		engine.Update( 0.5f ); // progress 0.5, outbound -> 5.0
+		using( Assert.EnterMultipleScope() ) {
+			Assert.That( engine.TryGetCurrentValue( handle, out float outbound ), Is.True );
+			Assert.That( outbound, Is.EqualTo( 5.0f ).Within( 0.01f ) );
+		}
+
+		engine.Update( 0.5f ); // progress 1.0, peak at target -> 10.0
+		using( Assert.EnterMultipleScope() ) {
+			Assert.That( engine.TryGetCurrentValue( handle, out float peak ), Is.True );
+			Assert.That( peak, Is.EqualTo( 10.0f ).Within( 0.01f ) );
+		}
+
+		engine.Update( 0.5f ); // progress 1.5, returning -> 5.0
+		using( Assert.EnterMultipleScope() ) {
+			Assert.That( engine.TryGetCurrentValue( handle, out float returning ), Is.True );
+			Assert.That( returning, Is.EqualTo( 5.0f ).Within( 0.01f ) );
+		}
+
+		engine.Update( 0.5f ); // progress 2.0, wraps back to start -> 0.0
+		using( Assert.EnterMultipleScope() ) {
+			Assert.That( engine.TryGetCurrentValue( handle, out float backToStart ), Is.True );
+			Assert.That( backToStart, Is.Zero.Within( 0.01f ) );
+			// A bouncing tween never completes on its own.
+			Assert.That( engine.IsComplete( handle ), Is.False );
+		}
+	}
 }

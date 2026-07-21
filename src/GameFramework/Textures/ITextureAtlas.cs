@@ -16,4 +16,6 @@ public interface ITextureAtlas : IDisposable {
 
 	ITexture Texture { get; }
 
+	ISubTexture this[string id] { get; }
+
 }

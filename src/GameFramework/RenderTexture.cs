@@ -15,7 +15,7 @@ internal sealed class RenderTexture : IRenderTexture {
 	private readonly ITexture _texture;
 
 	private bool _isDisposed;
-	private Rectangle? _clip;
+	private Bounds? _clip;
 
 	public RenderTexture(
 		GL gl,
@@ -95,7 +95,7 @@ internal sealed class RenderTexture : IRenderTexture {
 	}
 
 	void IRenderTarget.SetClip(
-		Rectangle clip
+		Bounds clip
 	) {
 		ThrowIfDisposed();
 		_clip = clip;
@@ -115,7 +115,7 @@ internal sealed class RenderTexture : IRenderTexture {
 			|| _clip.Value.Width != size.Width
 			|| _clip.Value.Height != size.Height
 		) {
-			_clip = new Rectangle( position.X, position.Y, size.Width, size.Height );
+			_clip = new Bounds( position.X, position.Y, size.Width, size.Height );
 		}
 		if( IsBound() ) {
 			ApplyClip();
@@ -130,7 +130,7 @@ internal sealed class RenderTexture : IRenderTexture {
 		}
 	}
 
-	Rectangle? IRenderTarget.Clip => _clip;
+	Bounds? IRenderTarget.Clip => _clip;
 
 	Dimension ITexture.TextureSize => _texture.TextureSize;
 
@@ -226,7 +226,7 @@ internal sealed class RenderTexture : IRenderTexture {
 	}
 
 	private void ApplyClip() {
-		if( _clip is Rectangle clip ) {
+		if( _clip is Bounds clip ) {
 			// The framebuffer projection already has its origin at the
 			// bottom-left, matching the OpenGL scissor box, so no Y flip.
 			_stateCache.SetScissor( true, clip.X, clip.Y, (uint)clip.Width, (uint)clip.Height );

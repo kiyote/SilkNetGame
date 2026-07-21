@@ -36,6 +36,11 @@ internal sealed class GlStateCache {
 	// Bound texture id per texture unit. Small fixed set is plenty for a 2D sprite engine.
 	private readonly uint[] _boundTextures;
 
+	private bool _blendInitialized;
+	private bool _blendEnabled;
+	private BlendingFactor _blendSrc;
+	private BlendingFactor _blendDst;
+
 	public GlStateCache(
 		GL gl
 	) {
@@ -127,6 +132,69 @@ internal sealed class GlStateCache {
 		}
 	}
 
+	// Reports whether the shadowed binding for the given unit already matches the
+	// requested texture. Returns false for out-of-range units and until the first
+	// bind on that unit, so the caller always issues a deterministic first bind.
+	public bool IsTextureBound(
+		int unit,
+		uint texture
+	) {
+		if( unit < 0 || unit >= _boundTextures.Length ) {
+			return false;
+		}
+		return _boundTextures[unit] == texture;
+	}
+
+	// Programs the blend state, skipping the driver calls when the shadowed state
+	// already matches. When disabling, the source/destination factors are ignored.
+	public void SetBlend(
+		bool enabled,
+		BlendingFactor src,
+		BlendingFactor dst
+	) {
+		if( !enabled ) {
+			if( !_blendInitialized || _blendEnabled ) {
+				_gl.Disable( EnableCap.Blend );
+				_blendEnabled = false;
+				_blendInitialized = true;
+			}
+			return;
+		}
+
+		if( !_blendInitialized || !_blendEnabled ) {
+			_gl.Enable( EnableCap.Blend );
+			_blendEnabled = true;
+		}
+
+		if( !_blendInitialized || _blendSrc != src || _blendDst != dst ) {
+			_gl.BlendFunc( src, dst );
+			_blendSrc = src;
+			_blendDst = dst;
+		}
+
+		_blendInitialized = true;
+	}
+
+	// Reports whether the shadowed blend state already matches the requested state.
+	// Returns false until the first SetBlend has run, so the caller always programs
+	// a deterministic state at least once. When disabling, only the enabled flag is
+	// considered; the source/destination factors are irrelevant.
+	public bool IsBlend(
+		bool enabled,
+		BlendingFactor src,
+		BlendingFactor dst
+	) {
+		if( !_blendInitialized ) {
+			return false;
+		}
+
+		if( !enabled ) {
+			return !_blendEnabled;
+		}
+
+		return _blendEnabled && _blendSrc == src && _blendDst == dst;
+	}
+
 	/// <summary>
 	/// Drops all shadowed state so the next call of each kind is forced through to GL.
 	/// Call this after any code path mutates tracked GL state without going through the
@@ -138,5 +206,6 @@ internal sealed class GlStateCache {
 		_scissorInitialized = false;
 		_activeUnit = UNKNOWN_UNIT;
 		Array.Fill( _boundTextures, UNKNOWN );
+		_blendInitialized = false;
 	}
 }

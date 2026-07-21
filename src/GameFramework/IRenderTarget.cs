@@ -18,7 +18,7 @@ public interface IRenderTarget : IDisposable {
 	);
 
 	void SetClip(
-		Rectangle clip
+		Bounds clip
 	);
 
 	void SetClip(
@@ -28,7 +28,7 @@ public interface IRenderTarget : IDisposable {
 
 	void ClearClip();
 
-	Rectangle? Clip { get; }
+	Bounds? Clip { get; }
 
 	void Bind();
 

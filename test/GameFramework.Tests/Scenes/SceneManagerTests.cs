@@ -1,6 +1,4 @@
-﻿using System.Drawing;
-
-namespace GameFramework.Scenes.Tests;
+﻿namespace GameFramework.Scenes.Tests;
 
 [TestFixture]
 internal sealed class SceneManagerTests {
@@ -9,34 +7,34 @@ internal sealed class SceneManagerTests {
 	public void Ctor_ValidCoordinates_SceneIsDefined() {
 		ISceneManager scene = new SceneManager( new Dimension( 100, 100 ) );
 
-		Assert.That( scene.Root.Clip, Is.EqualTo( new Rectangle( 0, 0, 100, 100 ) ) );
+		Assert.That( scene.Root.Clip, Is.EqualTo( new Bounds( 0, 0, 100, 100 ) ) );
 	}
 
 	[Test]
 	public void AddScene_SceneContained_FullSceneCreated() {
 		ISceneManager sceneManager = new SceneManager( new Dimension( 100, 100 ) );
-		SceneNode scene = new SceneNode( sceneManager.Root, new Coordinate( 10, 10 ), new Dimension( 90, 90 ), NullSceneMouseHandler.Instance );
+		SceneNode scene = new SceneNode( sceneManager.Root, new Coordinate( 10, 10 ), new Dimension( 90, 90 ), ISceneMouseHandler.None, ISceneRenderHandler.None );
 
-		Assert.That( scene.Clip, Is.EqualTo( new Rectangle( 10, 10, 90, 90 ) ) );
+		Assert.That( scene.Clip, Is.EqualTo( new Bounds( 10, 10, 90, 90 ) ) );
 	}
 
 	[Test]
 	public void AddScene_SceneClipped_ClippedSceneReturned() {
 		ISceneManager sceneManager = new SceneManager( new Dimension( 100, 100 ) );
-		SceneNode node1 = new SceneNode( sceneManager.Root, new Coordinate( 10, 10 ), new Dimension( 90, 90 ), NullSceneMouseHandler.Instance );
-		SceneNode node2 = new SceneNode( node1, new Coordinate( 50, 50 ), new Dimension( 100, 100 ), NullSceneMouseHandler.Instance );
+		SceneNode node1 = new SceneNode( sceneManager.Root, new Coordinate( 10, 10 ), new Dimension( 90, 90 ), ISceneMouseHandler.None, ISceneRenderHandler.None );
+		SceneNode node2 = new SceneNode( node1, new Coordinate( 50, 50 ), new Dimension( 100, 100 ), ISceneMouseHandler.None, ISceneRenderHandler.None );
 
-		Assert.That( node2.Clip, Is.EqualTo( new Rectangle( 60, 60, 40, 40 ) ) );
+		Assert.That( node2.Clip, Is.EqualTo( new Bounds( 60, 60, 40, 40 ) ) );
 	}
 
 	[Test]
 	public void MouseDown_NodeInAndOut_OnlyInCodeCalled() {
 		ISceneManager sceneManager = new SceneManager( new Dimension( 100, 100 ) );
 		TestingNodeHandler node1Handler = new TestingNodeHandler();
-		sceneManager.Root.AddChild( default, new Dimension( 50, 100 ), node1Handler );
+		sceneManager.Root.AddChild( default, new Dimension( 50, 100 ), node1Handler, ISceneRenderHandler.None );
 
 		TestingNodeHandler node2Handler = new TestingNodeHandler();
-		sceneManager.Root.AddChild( new Coordinate( 50, 0 ), new Dimension( 50, 100 ), node2Handler );
+		sceneManager.Root.AddChild( new Coordinate( 50, 0 ), new Dimension( 50, 100 ), node2Handler, ISceneRenderHandler.None );
 
 		Coordinate coordinate = new Coordinate( 75, 25 );
 		using( Assert.EnterMultipleScope() ) {
@@ -53,10 +51,10 @@ internal sealed class SceneManagerTests {
 	public void MouseUp_NodeInAndOut_OnlyInCodeCalled() {
 		ISceneManager sceneManager = new SceneManager( new Dimension( 100, 100 ) );
 		TestingNodeHandler node1Handler = new TestingNodeHandler();
-		sceneManager.Root.AddChild( default, new Dimension( 50, 100 ), node1Handler );
+		sceneManager.Root.AddChild( default, new Dimension( 50, 100 ), node1Handler, ISceneRenderHandler.None );
 
 		TestingNodeHandler node2Handler = new TestingNodeHandler();
-		sceneManager.Root.AddChild( new Coordinate( 50, 0 ), new Dimension( 50, 100 ), node2Handler );
+		sceneManager.Root.AddChild( new Coordinate( 50, 0 ), new Dimension( 50, 100 ), node2Handler, ISceneRenderHandler.None );
 
 		Coordinate coordinate = new Coordinate( 75, 25 );
 		using( Assert.EnterMultipleScope() ) {

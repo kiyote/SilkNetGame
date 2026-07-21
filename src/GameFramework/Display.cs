@@ -4,7 +4,6 @@ using System.Runtime.CompilerServices;
 using Silk.NET.Maths;
 using Silk.NET.OpenGL;
 using Silk.NET.Windowing;
-using Rectangle = System.Drawing.Rectangle;
 
 namespace GameFramework;
 
@@ -15,7 +14,7 @@ internal sealed class Display : IDisplay {
 	private readonly GlStateCache _stateCache;
 	private Dimension _size;
 	private Matrix4x4 _projection;
-	private Rectangle? _clip;
+	private Bounds? _clip;
 
 	public Display(
 		IWindow window,
@@ -53,7 +52,7 @@ internal sealed class Display : IDisplay {
 	}
 
 	void IRenderTarget.SetClip(
-		Rectangle clip
+		Bounds clip
 	) {
 		_clip = clip;
 		if( IsBound() ) {
@@ -71,7 +70,7 @@ internal sealed class Display : IDisplay {
 			|| _clip.Value.Width != size.Width
 			|| _clip.Value.Height != size.Height
 		) {
-			_clip = new Rectangle( position.X, position.Y, size.Width, size.Height );
+			_clip = new Bounds( position.X, position.Y, size.Width, size.Height );
 		}
 		if( IsBound() ) {
 			ApplyClip();
@@ -85,7 +84,7 @@ internal sealed class Display : IDisplay {
 		}
 	}
 
-	Rectangle? IRenderTarget.Clip => _clip;
+	Bounds? IRenderTarget.Clip => _clip;
 
 	Matrix4x4 IRenderTarget.Projection => _projection;
 
@@ -98,7 +97,7 @@ internal sealed class Display : IDisplay {
 	}
 
 	private void ApplyClip() {
-		if( _clip is Rectangle clip ) {
+		if( _clip is Bounds clip ) {
 			// The display projection has its origin at the top-left, but the
 			// OpenGL scissor box is measured from the bottom-left, so flip Y.
 			int y = _size.Height - ( clip.Y + clip.Height );

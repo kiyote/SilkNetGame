@@ -19,7 +19,10 @@ internal sealed class TextureManager : ITextureManager {
 		bool premultiplyAlpha = true,
 		TextureFilter filter = TextureFilter.Linear
 	) {
-		ITexture texture = _device.LoadTexture( textureFile, premultiplyAlpha, filter );
+		if (_textures.TryGetValue( id, out ITexture? texture )) {
+			return texture;
+		}
+		texture = _device.LoadTexture( textureFile, premultiplyAlpha, filter );
 		_textures[id] = texture;
 		return texture;
 	}

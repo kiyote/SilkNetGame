@@ -28,6 +28,8 @@ internal sealed class TextureAtlas : ITextureAtlas {
 
 	ITexture ITextureAtlas.Texture => _texture;
 
+	ISubTexture ITextureAtlas.this[string id] => _registry[id];
+
 	public ISubTexture Create(
 		string id,
 		IFont font,

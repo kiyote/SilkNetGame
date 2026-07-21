@@ -20,7 +20,7 @@ public interface ISceneManager {
 		Coordinate coordinate
 	);
 
-	int Render(
+	void Render(
 		ISpriteBatch spriteBatch
 	);
 }

@@ -4,5 +4,9 @@ namespace GameFramework.Scenes;
 
 public interface ISceneRenderHandler {
 
-	bool OnRender( SceneNode node, ISpriteBatch spriteBatch );
+	// A no-op render handler that draws nothing. Use as the default when a node has
+	// no rendering of its own.
+	static ISceneRenderHandler None => NullSceneRenderHandler.Instance;
+
+	void OnRender( SceneNode node, ISpriteBatch spriteBatch );
 }

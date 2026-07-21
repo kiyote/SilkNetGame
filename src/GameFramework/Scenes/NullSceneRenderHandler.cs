@@ -8,5 +8,5 @@ internal class NullSceneRenderHandler: ISceneRenderHandler {
 
 	private NullSceneRenderHandler() { }
 
-	public bool OnRender( SceneNode node, ISpriteBatch spriteBatch ) { return false; }
+	public void OnRender( SceneNode node, ISpriteBatch spriteBatch ) { }
 }

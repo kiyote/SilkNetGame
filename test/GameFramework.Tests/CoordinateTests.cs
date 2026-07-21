@@ -1,5 +1,3 @@
-using System.Drawing;
-
 namespace GameFramework.Tests;
 
 [TestFixture]
@@ -18,8 +16,8 @@ internal sealed class CoordinateTests {
 	}
 
 	[Test]
-	public void Subtract_Rectangle_SubtractsRectangleOrigin() {
-		Coordinate result = new Coordinate( 10, 20 ).Subtract( new Rectangle( 3, 4, 100, 200 ) );
+	public void Subtract_Bounds_SubtractsBoundsOrigin() {
+		Coordinate result = new Coordinate( 10, 20 ).Subtract( new Bounds( 3, 4, 100, 200 ) );
 		Assert.That( result, Is.EqualTo( new Coordinate( 7, 16 ) ) );
 	}
 

@@ -1,41 +1,66 @@
-﻿using System.Drawing;
-using GameFramework.Textures;
+﻿using GameFramework.Textures;
 
 namespace GameFramework.Sprites;
 
-
 public interface ISpriteBatch : IDisposable {
-	// The optional clip rectangle is applied to the render target for the entire
-	// batch. It is batch-scoped and immutable: to change the clip, Finish() the
-	// current batch and Start() a new one. Passing null leaves the batch unclipped
-	// (and clears any clip a previous batch may have left on the target).
-	void Start( IRenderTarget renderTarget, ITexture texture, BlendMode blendMode = BlendMode.Premultiplied, Rectangle? clip = null );
+	// Begins a batch that renders to the given target. The batch starts unclipped
+	// and with no texture bound; the texture and blend mode are chosen per-draw (see
+	// the Draw overloads) and the clip is changed via ReplaceClip/RestoreClip.
+	void Start( IRenderTarget renderTarget );
 	void Finish();
 
-	// Ensures the batch is active with exactly the given parameters. If a batch is
-	// already running with the same renderTarget, texture (by Id), blendMode and
-	// clip, this does nothing and returns false. Otherwise it Finish()es any current
-	// batch and Start()s a new one, returning true. Lets consumers avoid hand-rolling
-	// the "did anything change?" checks before every Start.
-	bool Ensure( IRenderTarget renderTarget, ITexture texture, BlendMode blendMode = BlendMode.Premultiplied, Rectangle? clip = null );
+	// Pushes a clip onto the clip stack and applies it as the scissor for
+	// subsequent draws, flushing any pending sprites first if the scissor actually
+	// changes. May be called before Start to establish an initial clip that the
+	// batch will adopt when it begins. The matching RestoreClip pops it back off.
+	void ReplaceClip( Bounds clip );
+
+	// Pops the most recently pushed clip off the stack and restores the scissor to
+	// the previous clip (or clears it if the stack becomes empty), flushing any
+	// pending sprites first if the scissor actually changes. While a batch is
+	// running this throws if there is no clip pushed after Start to restore (i.e. it
+	// would pop below the depth recorded at Start). Outside a batch, restoring an
+	// empty stack is a silent no-op.
+	void RestoreClip();
+
+	// Monotonic count of GPU flushes (draw calls) performed over this batch's
+	// lifetime. Increments whenever pending sprites are flushed -- on a texture
+	// change, a clip change, a capacity overflow, or Finish(). Snapshot it before and
+	// after a body of work and take the difference to measure batch breaks.
+	long FlushCount { get; }
 
 	// Methods that perform actual drawing
 	// -----------------------------------
-	void Draw( float x, float y, float width, float height, float u1, float v1, float u2, float v2, uint colour );
-	void Draw( float x, float y, float width, float height, float u1, float v1, float u2, float v2, float rotation, float originX, float originY, uint colour );
+	// The textureId selects the source texture (its ITexture.Id). Drawing with an id
+	// different from the currently bound one implicitly flushes and rebinds. Likewise,
+	// drawing with a blendMode different from the one currently in effect implicitly
+	// flushes and reprograms the blend state.
+	void Draw( uint textureId, float x, float y, float width, float height, float u1, float v1, float u2, float v2, uint colour = 0xFFFFFFFF, BlendMode blendMode = BlendMode.Premultiplied );
+	void Draw( uint textureId, float x, float y, float width, float height, float u1, float v1, float u2, float v2, float rotation, float originX, float originY, uint colour = 0xFFFFFFFF, BlendMode blendMode = BlendMode.Premultiplied );
 
 	// Helper methods for drawing
 	// --------------------------
-	void Draw( float x, float y, float width, float height, ISubTexture subTexture, uint colour ) => Draw( x, y, width, height, subTexture.U1, subTexture.V1, subTexture.U2, subTexture.V2, colour );
-	void Draw( float x, float y, ISubTexture subTexture, uint colour ) => Draw( x, y, subTexture.Size.Width, subTexture.Size.Height, subTexture.U1, subTexture.V1, subTexture.U2, subTexture.V2, colour );
-	void Draw( float x, float y, float width, float height, ISubTexture subTexture, float rotation, uint colour ) => Draw( x, y, width, height, subTexture.U1, subTexture.V1, subTexture.U2, subTexture.V2, rotation, width * 0.5f, height * 0.5f, colour );
-	void Draw( float x, float y, ISubTexture subTexture, float rotation, uint colour ) => Draw( x, y, subTexture.Size.Width, subTexture.Size.Height, subTexture.U1, subTexture.V1, subTexture.U2, subTexture.V2, rotation, subTexture.Size.Width * 0.5f, subTexture.Size.Height * 0.5f, colour );
-	void Draw( float x, float y, float width, float height, ISubTexture subTexture, float rotation, float originX, float originY, uint colour ) => Draw( x, y, width, height, subTexture.U1, subTexture.V1, subTexture.U2, subTexture.V2, rotation, originX, originY, colour );
+	void Draw( float x, float y, float width, float height, ISubTexture subTexture, uint colour = 0xFFFFFFFF, BlendMode blendMode = BlendMode.Premultiplied ) => Draw( subTexture.Texture.Id, x, y, width, height, subTexture.U1, subTexture.V1, subTexture.U2, subTexture.V2, colour, blendMode );
+	void Draw( float x, float y, ISubTexture subTexture, uint colour = 0xFFFFFFFF, BlendMode blendMode = BlendMode.Premultiplied ) => Draw( subTexture.Texture.Id, x, y, subTexture.Size.Width, subTexture.Size.Height, subTexture.U1, subTexture.V1, subTexture.U2, subTexture.V2, colour, blendMode );
+	void Draw( float x, float y, float width, float height, ISubTexture subTexture, float rotation, uint colour = 0xFFFFFFFF, BlendMode blendMode = BlendMode.Premultiplied ) => Draw( subTexture.Texture.Id, x, y, width, height, subTexture.U1, subTexture.V1, subTexture.U2, subTexture.V2, rotation, width * 0.5f, height * 0.5f, colour, blendMode );
+	void Draw( float x, float y, ISubTexture subTexture, float rotation, uint colour = 0xFFFFFFFF, BlendMode blendMode = BlendMode.Premultiplied ) => Draw( subTexture.Texture.Id, x, y, subTexture.Size.Width, subTexture.Size.Height, subTexture.U1, subTexture.V1, subTexture.U2, subTexture.V2, rotation, subTexture.Size.Width * 0.5f, subTexture.Size.Height * 0.5f, colour, blendMode );
+	void Draw( float x, float y, float width, float height, ISubTexture subTexture, float rotation, float originX, float originY, uint colour = 0xFFFFFFFF, BlendMode blendMode = BlendMode.Premultiplied ) => Draw( subTexture.Texture.Id, x, y, width, height, subTexture.U1, subTexture.V1, subTexture.U2, subTexture.V2, rotation, originX, originY, colour, blendMode );
+
+	// Coordinate-based overloads
+	// --------------------------
+	// Convenience overloads that take the position as a Coordinate rather than
+	// explicit x/y floats.
+	void Draw( Coordinate position, Dimension size, ISubTexture subTexture, uint colour = 0xFFFFFFFF, BlendMode blendMode = BlendMode.Premultiplied ) => Draw( position.X, position.Y, size.Width, size.Height, subTexture, colour, blendMode );
+	void Draw( Coordinate position, ISubTexture subTexture, uint colour = 0xFFFFFFFF, BlendMode blendMode = BlendMode.Premultiplied ) => Draw( position.X, position.Y, subTexture, colour, blendMode );
+	void Draw( Coordinate position, Dimension size, ISubTexture subTexture, float rotation, uint colour = 0xFFFFFFFF, BlendMode blendMode = BlendMode.Premultiplied ) => Draw( position.X, position.Y, size.Width, size.Height, subTexture, rotation, colour, blendMode );
+	void Draw( Coordinate position, ISubTexture subTexture, float rotation, uint colour = 0xFFFFFFFF, BlendMode blendMode = BlendMode.Premultiplied ) => Draw( position.X, position.Y, subTexture, rotation, colour, blendMode );
+	void Draw( Coordinate position, Dimension size, ISubTexture subTexture, float rotation, float originX, float originY, uint colour = 0xFFFFFFFF, BlendMode blendMode = BlendMode.Premultiplied ) => Draw( position.X, position.Y, size.Width, size.Height, subTexture, rotation, originX, originY, colour, blendMode );
 
 	// Methods to draw clipped sprites
-	// (Using these instead of setting the clip on the render target can be more efficient as it avoids flushing the batch if you need to change the clipping rect often.)
+	// (Geometry-space per-sprite clipping. This is distinct from SetClip's scissor and
+	// avoids flushing the batch when only a single sprite needs trimming.)
 	// -------------------------------
-	void Draw( float x, float y, float width, float height, ISubTexture subTexture, Rectangle clip, uint colour ) {
+	void Draw( float x, float y, float width, float height, ISubTexture subTexture, Bounds clip, uint colour = 0xFFFFFFFF, BlendMode blendMode = BlendMode.Premultiplied ) {
 		float left = MathF.Max( x, clip.Left );
 		float top = MathF.Max( y, clip.Top );
 		float right = MathF.Min( x + width, clip.Right );
@@ -55,9 +80,12 @@ public interface ISpriteBatch : IDisposable {
 		float u2 = subTexture.U1 + ( ( right - x ) * uPerPixel );
 		float v2 = subTexture.V1 + ( ( bottom - y ) * vPerPixel );
 
-		Draw( left, top, right - left, bottom - top, u1, v1, u2, v2, colour );
+		Draw( subTexture.Texture.Id, left, top, right - left, bottom - top, u1, v1, u2, v2, colour, blendMode );
 	}
 
-	void Draw( float x, float y, ISubTexture subTexture, Rectangle clip, uint colour ) => Draw( x, y, subTexture.Size.Width, subTexture.Size.Height, subTexture, clip, colour );
+	void Draw( float x, float y, ISubTexture subTexture, Bounds clip, uint colour = 0xFFFFFFFF, BlendMode blendMode = BlendMode.Premultiplied ) => Draw( x, y, subTexture.Size.Width, subTexture.Size.Height, subTexture, clip, colour, blendMode );
+
+	void Draw( Coordinate position, float width, float height, ISubTexture subTexture, Bounds clip, uint colour = 0xFFFFFFFF, BlendMode blendMode = BlendMode.Premultiplied ) => Draw( position.X, position.Y, width, height, subTexture, clip, colour, blendMode );
+	void Draw( Coordinate position, ISubTexture subTexture, Bounds clip, uint colour = 0xFFFFFFFF, BlendMode blendMode = BlendMode.Premultiplied ) => Draw( position.X, position.Y, subTexture, clip, colour, blendMode );
 
 }

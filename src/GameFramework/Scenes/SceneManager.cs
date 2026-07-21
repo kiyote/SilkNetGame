@@ -2,7 +2,7 @@
 
 namespace GameFramework.Scenes;
 
-internal sealed class SceneManager : ISceneManager {
+public sealed class SceneManager : ISceneManager {
 
 	private readonly SceneNode _root;
 	private Coordinate _lastCoordinate = new( int.MinValue, int.MinValue );
@@ -37,24 +37,20 @@ internal sealed class SceneManager : ISceneManager {
 		return result;
 	}
 
-	int ISceneManager.Render(
+	void ISceneManager.Render(
 		ISpriteBatch spriteBatch
 	) {
-		return WalkRender( _root, spriteBatch );
+		WalkRender( _root, spriteBatch );
 	}
 
-	private static int WalkRender(
+	private static void WalkRender(
 		SceneNode node,
 		ISpriteBatch spriteBatch
 	) {
-		int flushes = node.Render( spriteBatch ) ? 1 : 0;
-
-		// Then descend into children so they paint over their parent.
+		node.Render( spriteBatch );
 		foreach( SceneNode child in node.Children ) {
-			flushes += WalkRender( child, spriteBatch );
+			WalkRender( child, spriteBatch );
 		}
-
-		return flushes;
 	}
 
 	private bool WalkMouseMove(

@@ -1,4 +1,4 @@
-﻿using System.Drawing;
+﻿using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
 using GameFramework.Textures;
 using Silk.NET.OpenGL;
@@ -23,6 +23,7 @@ internal unsafe sealed class SpriteBatchPMO : ISpriteBatch {
 	private readonly uint _totalBufferBytes;
 
 	private readonly GL _gl;
+	private readonly GlStateCache _stateCache;
 	private readonly SpriteBatchShader _shader;
 
 	private uint _vao;
@@ -36,10 +37,11 @@ internal unsafe sealed class SpriteBatchPMO : ISpriteBatch {
 	private int _bufferedSprites;
 	private bool _isBatching;
 	private bool _isDisposed;
-	private Rectangle? _clip;
-	private ITexture? _texture;
+	private readonly Stack<Bounds> _clipStack = new Stack<Bounds>();
+	private int _clipDepthAtStart;
+	private Bounds? _appliedClip;
 	private IRenderTarget? _renderTarget;
-	private BlendMode _blendMode;
+	private long _flushCount;
 
 	public SpriteBatchPMO(
 		GL gl,
@@ -57,6 +59,7 @@ internal unsafe sealed class SpriteBatchPMO : ISpriteBatch {
 		_fences = new nint[_numSegments];
 
 		_gl = gl;
+		_stateCache = stateCache;
 		_shader = new SpriteBatchShader( gl, stateCache );
 		Initialize();
 	}
@@ -119,10 +122,7 @@ internal unsafe sealed class SpriteBatchPMO : ISpriteBatch {
 	}
 
 	void ISpriteBatch.Start(
-		IRenderTarget renderTarget,
-		ITexture texture,
-		BlendMode blendMode,
-		Rectangle? clip
+		IRenderTarget renderTarget
 	) {
 		if( _isBatching ) {
 			return;
@@ -134,35 +134,87 @@ internal unsafe sealed class SpriteBatchPMO : ISpriteBatch {
 		// waited-on and ready to write (see the sync-on-advance there), and a
 		// freshly constructed batch has no pending fences.
 		_shader.Bind( renderTarget );
-		texture.Bind( TEXTURE_UNIT_0 );
-		_texture = texture;
 		_renderTarget = renderTarget;
-		_blendMode = blendMode;
 		_gl.BindVertexArray( _vao );
 
-		// The clip is batch-scoped. Always set it explicitly (or clear it) so the
-		// batch starts in a deterministic state rather than inheriting whatever
-		// scissor a previous batch left on the target.
-		if( clip.HasValue ) {
-			renderTarget.SetClip( clip.Value );
+		// Texture and blend state are owned by GlStateCache, which shadows the real GL
+		// state across batches. The first Draw programs each through the cache (see
+		// BindTexture / ApplyBlendMode); a redundant program is skipped when the cache
+		// already reflects the requested state.
+
+		// Adopt whatever clip is currently on top of the stack (which may have been
+		// pushed before Start) so the batch begins in a deterministic scissor state
+		// rather than inheriting whatever a previous batch left on the target. Record
+		// the current depth so Finish can verify the stack was balanced.
+		_clipDepthAtStart = _clipStack.Count;
+		if( _clipStack.Count > 0 ) {
+			Bounds clip = _clipStack.Peek();
+			renderTarget.SetClip( clip );
+			_appliedClip = clip;
 		} else {
 			renderTarget.ClearClip();
+			_appliedClip = null;
 		}
-		_clip = clip;
+	}
 
+	// Ensures the given blend mode is the one programmed for subsequent draws. The
+	// mode maps to concrete GL blend factors that are compared against GlStateCache's
+	// shadowed state; when they differ, any pending sprites are flushed (they belong
+	// to the old blend state) before the new state is programmed through the cache.
+	[MethodImpl( MethodImplOptions.AggressiveInlining )]
+	private void ApplyBlendMode(
+		BlendMode blendMode
+	) {
+		bool enabled;
+		BlendingFactor src;
+		BlendingFactor dst;
 		switch( blendMode ) {
 			case BlendMode.None:
-				_gl.Disable( EnableCap.Blend );
-				break;
-			case BlendMode.Premultiplied:
-				_gl.Enable( EnableCap.Blend );
-				_gl.BlendFunc( BlendingFactor.One, BlendingFactor.OneMinusSrcAlpha );
+				enabled = false;
+				src = BlendingFactor.One;
+				dst = BlendingFactor.Zero;
 				break;
 			case BlendMode.Additive:
-				_gl.Enable( EnableCap.Blend );
-				_gl.BlendFunc( BlendingFactor.One, BlendingFactor.One );
+				enabled = true;
+				src = BlendingFactor.One;
+				dst = BlendingFactor.One;
+				break;
+			case BlendMode.Premultiplied:
+			default:
+				enabled = true;
+				src = BlendingFactor.One;
+				dst = BlendingFactor.OneMinusSrcAlpha;
 				break;
 		}
+
+		if( _stateCache.IsBlend( enabled, src, dst ) ) {
+			return;
+		}
+
+		if( _bufferedSprites > 0 ) {
+			FlushBatch();
+		}
+
+		_stateCache.SetBlend( enabled, src, dst );
+	}
+
+	// Ensures the given texture is the one bound for subsequent draws. The bound
+	// texture is compared against GlStateCache's shadowed state; when it differs, any
+	// pending sprites are flushed (they belong to the old texture) before the new one
+	// is bound through the cache.
+	[MethodImpl( MethodImplOptions.AggressiveInlining )]
+	private void BindTexture(
+		uint textureId
+	) {
+		if( _stateCache.IsTextureBound( TEXTURE_UNIT_0, textureId ) ) {
+			return;
+		}
+
+		if( _bufferedSprites > 0 ) {
+			FlushBatch();
+		}
+
+		_stateCache.BindTexture( TEXTURE_UNIT_0, textureId );
 	}
 
 	// Reserves the slot for the next sprite in the current segment and returns a
@@ -186,6 +238,7 @@ internal unsafe sealed class SpriteBatchPMO : ISpriteBatch {
 	}
 
 	public void Draw(
+		uint textureId,
 		float x,
 		float y,
 		float width,
@@ -194,8 +247,22 @@ internal unsafe sealed class SpriteBatchPMO : ISpriteBatch {
 		float v1,
 		float u2,
 		float v2,
-		uint colour
+		uint colour = 0xFFFFFFFF,
+		BlendMode blendMode = BlendMode.Premultiplied
 	) {
+		// Program blend state first; if it differs from the currently applied mode
+		// this flushes the pending sprites and reprograms GL blend state.
+		ApplyBlendMode( blendMode );
+
+		// Switch to the requested texture first; if it differs from the currently
+		// bound one this flushes the pending sprites and rebinds.
+		BindTexture( textureId );
+
+		// Colours are authored as 0xRRGGBBAA, but the vertex attribute reads the four
+		// bytes in memory order. On a little-endian host that order is reversed, so
+		// byte-swap to [RR,GG,BB,AA] so the shader sees true (R,G,B,A).
+		colour = BinaryPrimitives.ReverseEndianness( colour );
+
 		// Reserve a slot (guards capacity and rotates segments if needed) and copy
 		// the sprite vertex data directly into the persistent mapping.
 		SpriteVertex* basePtr = ReserveSprite();
@@ -232,6 +299,7 @@ internal unsafe sealed class SpriteBatchPMO : ISpriteBatch {
 	}
 
 	public void Draw(
+		uint textureId,
 		float x,
 		float y,
 		float width,
@@ -243,8 +311,17 @@ internal unsafe sealed class SpriteBatchPMO : ISpriteBatch {
 		float rotation,
 		float originX,
 		float originY,
-		uint colour
+		uint colour = 0xFFFFFFFF,
+		BlendMode blendMode = BlendMode.Premultiplied
 	) {
+		ApplyBlendMode( blendMode );
+
+		BindTexture( textureId );
+
+		// See the non-rotated Draw: byte-swap the 0xRRGGBBAA colour so the little-endian
+		// vertex attribute presents true (R,G,B,A) to the shader.
+		colour = BinaryPrimitives.ReverseEndianness( colour );
+
 		SpriteVertex* basePtr = ReserveSprite();
 
 		// Pivot in world space, and the corner offsets relative to it (local space).
@@ -295,38 +372,81 @@ internal unsafe sealed class SpriteBatchPMO : ISpriteBatch {
 			throw new InvalidOperationException( "Cannot call Finish without a matching call to Start." );
 		}
 
+		// The clip stack must be balanced: every ReplaceClip issued after Start must
+		// have a matching RestoreClip, leaving the stack at the depth it had when
+		// Start was called. A mismatch means a clip scope was leaked.
+		if( _clipStack.Count != _clipDepthAtStart ) {
+			throw new InvalidOperationException(
+				$"Clip stack is unbalanced: expected depth {_clipDepthAtStart} at Finish but found {_clipStack.Count}. Every ReplaceClip after Start must have a matching RestoreClip."
+			);
+		}
+
 		if( _bufferedSprites > 0 ) {
 			FlushBatch();
 		}
 
 		_gl.BindVertexArray( 0 );
 		_isBatching = false;
-		_clip = null;
-		_texture = null;
 		_renderTarget = null;
 	}
 
-	bool ISpriteBatch.Ensure(
-		IRenderTarget renderTarget,
-		ITexture texture,
-		BlendMode blendMode,
-		Rectangle? clip
+	void ISpriteBatch.ReplaceClip(
+		Bounds clip
 	) {
-		ISpriteBatch self = this;
-		if( _isBatching
-			&& ReferenceEquals( _renderTarget, renderTarget )
-			&& _texture is not null && _texture.Id == texture.Id
-			&& _blendMode == blendMode
-			&& _clip == clip ) {
-			return false;
+		_clipStack.Push( clip );
+		ApplyCurrentClip();
+	}
+
+	void ISpriteBatch.RestoreClip() {
+		// While a batch is running, RestoreClip must not pop below the depth the
+		// stack had at Start: doing so would mutate a clip the caller seeded before
+		// Start (or that a parent scope owns) rather than one this batch pushed.
+		if( _isBatching && _clipStack.Count <= _clipDepthAtStart ) {
+			throw new InvalidOperationException(
+				$"RestoreClip has no matching ReplaceClip in this batch: stack depth {_clipStack.Count} is at or below the depth {_clipDepthAtStart} recorded at Start."
+			);
 		}
 
-		if( _isBatching ) {
-			self.Finish();
+		if( _clipStack.Count == 0 ) {
+			return;
 		}
-		self.Start( renderTarget, texture, blendMode, clip );
-		return true;
+
+		_clipStack.Pop();
+		ApplyCurrentClip();
 	}
+
+	// Applies the clip currently on top of the stack (or clears the scissor when the
+	// stack is empty) to the render target. Only touches GL state -- and flushes the
+	// pending sprites -- while a batch is running; before Start it simply tracks the
+	// stack so the eventual Start can adopt the right clip.
+	private void ApplyCurrentClip() {
+		if( !_isBatching ) {
+			return;
+		}
+
+		Bounds? desired = _clipStack.Count > 0 ? _clipStack.Peek() : null;
+
+		// Nothing to do if the effective scissor is unchanged -- avoids flushing a
+		// batch when a duplicate clip is pushed or popped.
+		if( desired == _appliedClip ) {
+			return;
+		}
+
+		// A scissor change affects subsequent draws, so any sprites already buffered
+		// under the previous clip must be flushed first.
+		if( _bufferedSprites > 0 ) {
+			FlushBatch();
+		}
+
+		if( desired.HasValue ) {
+			_renderTarget!.SetClip( desired.Value );
+		} else {
+			_renderTarget!.ClearClip();
+		}
+		_appliedClip = desired;
+	}
+
+	long ISpriteBatch.FlushCount => _flushCount;
 
 	private void FlushPending() {
 		if( _bufferedSprites > 0 ) {
@@ -335,6 +455,7 @@ internal unsafe sealed class SpriteBatchPMO : ISpriteBatch {
 	}
 
 	private void FlushBatch() {
+		_flushCount++;
 		uint segmentOffsetBytes = (uint)( _currentSegment * _frameMaxBytes );
 		uint totalVertices = (uint)( _bufferedSprites * VERTICES_PER_SPRITE );
 		uint dataSizeInBytes = totalVertices * STRIDE;

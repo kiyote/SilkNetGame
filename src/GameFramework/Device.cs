@@ -1,4 +1,6 @@
-﻿using GameFramework.Fonts;
+﻿using GameFramework.Animations;
+using GameFramework.Fonts;
+using GameFramework.Scenes;
 using GameFramework.Sprites;
 using GameFramework.Textures;
 using Microsoft.Extensions.DependencyInjection;
@@ -173,6 +175,7 @@ internal sealed class Device : IDevice {
 		serviceCollection.AddSingleton<ISpriteBatch, SpriteBatchPMO>();
 		serviceCollection.AddSingleton<Keyboard>();
 		serviceCollection.AddSingleton<ITextureManager, TextureManager>();
+		serviceCollection.AddTweeningEngine();
 		_configureServices?.Invoke( serviceCollection );
 		_services = serviceCollection.BuildServiceProvider();
 		_configureServices = null;

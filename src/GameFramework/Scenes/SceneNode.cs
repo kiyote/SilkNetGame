@@ -1,5 +1,4 @@
-﻿using System.Drawing;
-using System.Runtime.CompilerServices;
+﻿using System.Runtime.CompilerServices;
 using GameFramework.Sprites;
 
 namespace GameFramework.Scenes;
@@ -8,10 +7,10 @@ public sealed class SceneNode {
 	internal SceneNode(
 		Dimension size
 	) {
-		Clip = new Rectangle( 0, 0, size.Width, size.Height );
+		Clip = new Bounds( 0, 0, size.Width, size.Height );
 		Size = size;
-		Handler = NullSceneMouseHandler.Instance;
-		Renderer = NullSceneRenderHandler.Instance;
+		Handler = ISceneMouseHandler.None;
+		Renderer = ISceneRenderHandler.None;
 	}
 
 	internal SceneNode(
@@ -21,8 +20,8 @@ public sealed class SceneNode {
 		ISceneMouseHandler handler,
 		ISceneRenderHandler renderer
 	) {
-		Rectangle r = new Rectangle( parent.Clip.X + position.X, parent.Clip.Y + position.Y, size.Width, size.Height );
-		Clip = Rectangle.Intersect( parent.Clip, r );
+		Bounds r = new Bounds( parent.Clip.X + position.X, parent.Clip.Y + position.Y, size.Width, size.Height );
+		Clip = Bounds.Intersect( parent.Clip, r );
 		Position = position;
 		Size = new Dimension( Clip.Width, Clip.Height );
 		Handler = handler;
@@ -43,7 +42,7 @@ public sealed class SceneNode {
 
 	public Coordinate Position { get; }
 	public Dimension Size { get; }
-	public Rectangle Clip { get; }
+	public Bounds Clip { get; }
 #pragma warning disable CA1002
 	public List<SceneNode> Children { get; } = [];
 #pragma warning restore CA1002
@@ -105,7 +104,7 @@ public sealed class SceneNode {
 		Handler.OnMouseExited( this );
 
 	[MethodImpl( MethodImplOptions.AggressiveInlining )]
-	public bool Render(
+	public void Render(
 		ISpriteBatch spriteBatch
 	) =>
 		Renderer.OnRender( this, spriteBatch );

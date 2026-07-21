@@ -258,4 +258,115 @@ internal sealed class GlStateCacheTests {
 			_gl.DeleteFramebuffer( fbo );
 		}
 	}
+
+	[Test]
+	public void IsTextureBound_TracksBindingsPerUnit() {
+		GlStateCache cache = new GlStateCache( _gl );
+		uint texture = _gl.GenTexture();
+		try {
+			using( Assert.EnterMultipleScope() ) {
+				Assert.That( cache.IsTextureBound( 0, texture ), Is.False, "Nothing is bound before the first bind." );
+				Assert.That( cache.IsTextureBound( -1, texture ), Is.False, "Out-of-range units report unbound." );
+			}
+
+			cache.BindTexture( 0, texture );
+
+			using( Assert.EnterMultipleScope() ) {
+				Assert.That( cache.IsTextureBound( 0, texture ), Is.True );
+				Assert.That( cache.IsTextureBound( 1, texture ), Is.False, "A different unit is unaffected." );
+				Assert.That( cache.IsTextureBound( 0, 0 ), Is.False, "A different id on the same unit is not bound." );
+			}
+		} finally {
+			_gl.BindTexture( TextureTarget.Texture2D, 0 );
+			_gl.DeleteTexture( texture );
+		}
+	}
+
+	[Test]
+	public void IsBlend_BeforeFirstSet_ReturnsFalse() {
+		GlStateCache cache = new GlStateCache( _gl );
+
+		Assert.That(
+			cache.IsBlend( true, BlendingFactor.One, BlendingFactor.OneMinusSrcAlpha ),
+			Is.False,
+			"An uninitialized cache must not claim any blend state is current."
+		);
+	}
+
+	[Test]
+	public void SetBlend_Enabled_ProgramsGlAndShadowsState() {
+		GlStateCache cache = new GlStateCache( _gl );
+		try {
+			cache.SetBlend( true, BlendingFactor.One, BlendingFactor.OneMinusSrcAlpha );
+
+			using( Assert.EnterMultipleScope() ) {
+				Assert.That( GetInt( GLEnum.Blend ), Is.Not.EqualTo( 0 ) );
+				Assert.That( GetInt( GLEnum.BlendSrcRgb ), Is.EqualTo( (int)BlendingFactor.One ) );
+				Assert.That( GetInt( GLEnum.BlendDstRgb ), Is.EqualTo( (int)BlendingFactor.OneMinusSrcAlpha ) );
+				Assert.That( cache.IsBlend( true, BlendingFactor.One, BlendingFactor.OneMinusSrcAlpha ), Is.True );
+			}
+		} finally {
+			_gl.Disable( EnableCap.Blend );
+		}
+	}
+
+	[Test]
+	public void SetBlend_RepeatedSameState_SkipsRedundantProgramming() {
+		GlStateCache cache = new GlStateCache( _gl );
+		try {
+			cache.SetBlend( true, BlendingFactor.One, BlendingFactor.One );
+
+			// Mutate the factors directly behind the cache's back, then re-request the
+			// same state: a skip leaves our mutation in place.
+			_gl.BlendFunc( BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha );
+			cache.SetBlend( true, BlendingFactor.One, BlendingFactor.One );
+
+			using( Assert.EnterMultipleScope() ) {
+				Assert.That( GetInt( GLEnum.BlendSrcRgb ), Is.EqualTo( (int)BlendingFactor.SrcAlpha ), "Redundant blend program should have been skipped." );
+				Assert.That( GetInt( GLEnum.BlendDstRgb ), Is.EqualTo( (int)BlendingFactor.OneMinusSrcAlpha ) );
+			}
+		} finally {
+			_gl.Disable( EnableCap.Blend );
+		}
+	}
+
+	[Test]
+	public void SetBlend_Disabled_TurnsBlendOff() {
+		GlStateCache cache = new GlStateCache( _gl );
+		try {
+			cache.SetBlend( true, BlendingFactor.One, BlendingFactor.One );
+			cache.SetBlend( false, BlendingFactor.One, BlendingFactor.Zero );
+
+			using( Assert.EnterMultipleScope() ) {
+				Assert.That( GetInt( GLEnum.Blend ), Is.EqualTo( 0 ) );
+				Assert.That( cache.IsBlend( false, BlendingFactor.One, BlendingFactor.Zero ), Is.True );
+				Assert.That( cache.IsBlend( true, BlendingFactor.One, BlendingFactor.One ), Is.False );
+			}
+		} finally {
+			_gl.Disable( EnableCap.Blend );
+		}
+	}
+
+	[Test]
+	public void Invalidate_ForcesNextBlendThroughToGl() {
+		GlStateCache cache = new GlStateCache( _gl );
+		try {
+			cache.SetBlend( true, BlendingFactor.One, BlendingFactor.OneMinusSrcAlpha );
+
+			// Wipe the real state without telling the cache.
+			_gl.Disable( EnableCap.Blend );
+
+			cache.Invalidate();
+			Assert.That(
+				cache.IsBlend( true, BlendingFactor.One, BlendingFactor.OneMinusSrcAlpha ),
+				Is.False,
+				"After Invalidate the cache must not claim any blend state is current."
+			);
+
+			cache.SetBlend( true, BlendingFactor.One, BlendingFactor.OneMinusSrcAlpha );
+			Assert.That( GetInt( GLEnum.Blend ), Is.Not.EqualTo( 0 ) );
+		} finally {
+			_gl.Disable( EnableCap.Blend );
+		}
+	}
 }

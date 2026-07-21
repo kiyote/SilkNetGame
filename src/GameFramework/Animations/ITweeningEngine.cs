@@ -6,11 +6,14 @@ public interface ITweeningEngine {
 	// the lifetime of this tween; once it completes the slot may be recycled.
 	// The tween interpolates from start to target over the wall-clock duration,
 	// e.g. TimeSpan.FromMilliseconds( 75 ) to run the animation for 75ms.
+	// The loop mode controls playback: OneShot runs once then frees the slot; Loop
+	// and Bounce repeat indefinitely and run until TryCancel is called.
 	TweenHandle StartTween(
 		float start,
 		float target,
 		TimeSpan duration,
-		Easing ease
+		Easing ease,
+		LoopMode loopMode = LoopMode.OneShot
 	);
 
 	// Advances every active tween. deltaTime is the elapsed time since the last
