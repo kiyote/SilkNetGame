@@ -33,4 +33,10 @@ internal sealed class MapNodeRenderer : ISceneRenderHandler {
 		int offset = (int)(( MathF.Cos( interval ) + 1.0f ) * 0.5f * 100.0f);
 		spriteBatch.Draw( node.Clip.Position.Add( offset, offset ), node.Clip.Size, _terrainAtlas["tall_grass"], Lerp.Colour( 0xFFFFFFFFu, 0xFFFFFF00u, alpha ) );
 	}
+
+	public void OnUpdate(
+		SceneNode node,
+		double detlaTime
+	) {
+	}
 }

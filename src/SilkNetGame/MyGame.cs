@@ -121,6 +121,8 @@ internal sealed class MyGame : GameBase, IKeyHandler {
 	public override void Update(
 		double deltaTime
 	) {
+		_sceneManager.Update( deltaTime );
+
 		_tween.Update( deltaTime );
 		UpdateRotation( deltaTime );
 

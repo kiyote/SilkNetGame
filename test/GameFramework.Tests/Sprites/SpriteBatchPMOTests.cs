@@ -1,15 +1,15 @@
-using GameFramework.Sprites;
 using GameFramework.Textures;
 using Silk.NET.OpenGL;
 using Silk.NET.Windowing;
 
-namespace GameFramework.Tests;
+namespace GameFramework.Sprites.Tests;
 
 // Uses a real (hidden) GL context because Silk.NET's GL is a concrete type that
 // cannot be cheaply mocked (same approach as GlStateCacheTests).
 //
-// The batch's flush behaviour is proven through the public FlushCount metric: it
-// increments once per GPU submission (a texture change with pending sprites, a
+// The batch's flush behaviour is proven through the internal FlushCount metric on
+// SpriteBatchPMO (the count is also returned publicly from ISpriteBatch.Finish()):
+// it increments once per GPU submission (a texture change with pending sprites, a
 // clip change with pending sprites, a capacity overflow, or Finish()). Buffering a
 // sprite and then triggering a state change lets us assert whether a flush was
 // forced.
@@ -53,12 +53,12 @@ internal sealed class SpriteBatchPMOTests {
 			batch.Start( target );
 
 			batch.Draw( texture.Id, 0, 0, 4, 4, 0, 0, 1, 1, 0xFFFFFFFF );
-			long before = batch.FlushCount;
+			long before = ( (SpriteBatchPMO)batch ).FlushCount;
 
 			// Drawing again with the same texture id must not force a flush.
 			batch.Draw( texture.Id, 4, 4, 4, 4, 0, 0, 1, 1, 0xFFFFFFFF );
 
-			Assert.That( batch.FlushCount, Is.EqualTo( before ) );
+			Assert.That( ( (SpriteBatchPMO)batch ).FlushCount, Is.EqualTo( before ) );
 		} finally {
 			batch.Dispose();
 			texture.Dispose();
@@ -76,12 +76,12 @@ internal sealed class SpriteBatchPMOTests {
 			batch.Start( target );
 
 			batch.Draw( texture.Id, 0, 0, 4, 4, 0, 0, 1, 1, 0xFFFFFFFF );
-			long before = batch.FlushCount;
+			long before = ( (SpriteBatchPMO)batch ).FlushCount;
 
 			// A different texture id with pending sprites forces a flush/rebind.
 			batch.Draw( otherTexture.Id, 4, 4, 4, 4, 0, 0, 1, 1, 0xFFFFFFFF );
 
-			Assert.That( batch.FlushCount, Is.EqualTo( before + 1 ) );
+			Assert.That( ( (SpriteBatchPMO)batch ).FlushCount, Is.EqualTo( before + 1 ) );
 		} finally {
 			batch.Dispose();
 			otherTexture.Dispose();
@@ -101,10 +101,10 @@ internal sealed class SpriteBatchPMOTests {
 
 			// First draw binds the texture but there is nothing buffered before it,
 			// so no flush is forced by the initial bind.
-			long before = batch.FlushCount;
+			long before = ( (SpriteBatchPMO)batch ).FlushCount;
 			batch.Draw( texture.Id, 0, 0, 4, 4, 0, 0, 1, 1, 0xFFFFFFFF );
 
-			Assert.That( batch.FlushCount, Is.EqualTo( before ) );
+			Assert.That( ( (SpriteBatchPMO)batch ).FlushCount, Is.EqualTo( before ) );
 		} finally {
 			batch.Dispose();
 			otherTexture.Dispose();
@@ -122,12 +122,12 @@ internal sealed class SpriteBatchPMOTests {
 			batch.Start( target );
 
 			batch.Draw( texture.Id, 0, 0, 4, 4, 0, 0, 1, 1, 0xFFFFFFFF, BlendMode.Premultiplied );
-			long before = batch.FlushCount;
+			long before = ( (SpriteBatchPMO)batch ).FlushCount;
 
 			// Drawing again with the same blend mode must not force a flush.
 			batch.Draw( texture.Id, 4, 4, 4, 4, 0, 0, 1, 1, 0xFFFFFFFF, BlendMode.Premultiplied );
 
-			Assert.That( batch.FlushCount, Is.EqualTo( before ) );
+			Assert.That( ( (SpriteBatchPMO)batch ).FlushCount, Is.EqualTo( before ) );
 		} finally {
 			batch.Dispose();
 			texture.Dispose();
@@ -144,12 +144,12 @@ internal sealed class SpriteBatchPMOTests {
 			batch.Start( target );
 
 			batch.Draw( texture.Id, 0, 0, 4, 4, 0, 0, 1, 1, 0xFFFFFFFF, BlendMode.Premultiplied );
-			long before = batch.FlushCount;
+			long before = ( (SpriteBatchPMO)batch ).FlushCount;
 
 			// A different blend mode with pending sprites forces a flush/reprogram.
 			batch.Draw( texture.Id, 4, 4, 4, 4, 0, 0, 1, 1, 0xFFFFFFFF, BlendMode.Additive );
 
-			Assert.That( batch.FlushCount, Is.EqualTo( before + 1 ) );
+			Assert.That( ( (SpriteBatchPMO)batch ).FlushCount, Is.EqualTo( before + 1 ) );
 		} finally {
 			batch.Dispose();
 			texture.Dispose();
@@ -166,11 +166,11 @@ internal sealed class SpriteBatchPMOTests {
 			batch.Start( target );
 
 			batch.Draw( texture.Id, 0, 0, 4, 4, 0, 0, 1, 1, 0xFFFFFFFF );
-			long before = batch.FlushCount;
+			long before = ( (SpriteBatchPMO)batch ).FlushCount;
 
 			batch.ReplaceClip( new Bounds( 1, 1, 4, 4 ) );
 
-			Assert.That( batch.FlushCount, Is.EqualTo( before + 1 ) );
+			Assert.That( ( (SpriteBatchPMO)batch ).FlushCount, Is.EqualTo( before + 1 ) );
 
 			batch.RestoreClip();
 		} finally {
@@ -191,13 +191,13 @@ internal sealed class SpriteBatchPMOTests {
 			Bounds clip = new Bounds( 1, 1, 4, 4 );
 			batch.ReplaceClip( clip );
 			batch.Draw( texture.Id, 0, 0, 4, 4, 0, 0, 1, 1, 0xFFFFFFFF );
-			long before = batch.FlushCount;
+			long before = ( (SpriteBatchPMO)batch ).FlushCount;
 
 			// Pushing the same clip again is effectively a no-op scissor change and
 			// must not flush.
 			batch.ReplaceClip( clip );
 
-			Assert.That( batch.FlushCount, Is.EqualTo( before ) );
+			Assert.That( ( (SpriteBatchPMO)batch ).FlushCount, Is.EqualTo( before ) );
 
 			batch.RestoreClip();
 			batch.RestoreClip();
@@ -218,11 +218,11 @@ internal sealed class SpriteBatchPMOTests {
 
 			batch.ReplaceClip( new Bounds( 1, 1, 4, 4 ) );
 			batch.Draw( texture.Id, 0, 0, 4, 4, 0, 0, 1, 1, 0xFFFFFFFF );
-			long before = batch.FlushCount;
+			long before = ( (SpriteBatchPMO)batch ).FlushCount;
 
 			batch.RestoreClip();
 
-			Assert.That( batch.FlushCount, Is.EqualTo( before + 1 ) );
+			Assert.That( ( (SpriteBatchPMO)batch ).FlushCount, Is.EqualTo( before + 1 ) );
 		} finally {
 			batch.Dispose();
 			texture.Dispose();
@@ -315,11 +315,11 @@ internal sealed class SpriteBatchPMOTests {
 			batch.Start( target );
 
 			batch.Draw( texture.Id, 0, 0, 4, 4, 0, 0, 1, 1, 0xFFFFFFFF );
-			long before = batch.FlushCount;
+			long before = ( (SpriteBatchPMO)batch ).FlushCount;
 
-			batch.Finish();
+			long flushCount = batch.Finish();
 
-			Assert.That( batch.FlushCount, Is.EqualTo( before + 1 ) );
+			Assert.That( flushCount, Is.EqualTo( before + 1 ) );
 		} finally {
 			batch.Dispose();
 			texture.Dispose();

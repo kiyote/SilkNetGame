@@ -155,6 +155,9 @@ internal unsafe sealed class SpriteBatchPMO : ISpriteBatch {
 			renderTarget.ClearClip();
 			_appliedClip = null;
 		}
+
+		// Reset the flush count each frame
+		_flushCount = 0;
 	}
 
 	// Ensures the given blend mode is the one programmed for subsequent draws. The
@@ -367,7 +370,7 @@ internal unsafe sealed class SpriteBatchPMO : ISpriteBatch {
 		_bufferedSprites++;
 	}
 
-	void ISpriteBatch.Finish() {
+	long ISpriteBatch.Finish() {
 		if( !_isBatching ) {
 			throw new InvalidOperationException( "Cannot call Finish without a matching call to Start." );
 		}
@@ -388,6 +391,8 @@ internal unsafe sealed class SpriteBatchPMO : ISpriteBatch {
 		_gl.BindVertexArray( 0 );
 		_isBatching = false;
 		_renderTarget = null;
+
+		return _flushCount;
 	}
 
 	void ISpriteBatch.ReplaceClip(
@@ -446,7 +451,10 @@ internal unsafe sealed class SpriteBatchPMO : ISpriteBatch {
 		_appliedClip = desired;
 	}
 
-	long ISpriteBatch.FlushCount => _flushCount;
+	// Not part of ISpriteBatch: exposed to the test assembly so the batch's flush
+	// behaviour can be asserted mid-batch. Callers measure lifetime flushes via the
+	// value returned from ISpriteBatch.Finish().
+	internal long FlushCount => _flushCount;
 
 	private void FlushPending() {
 		if( _bufferedSprites > 0 ) {

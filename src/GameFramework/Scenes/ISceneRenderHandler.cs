@@ -9,4 +9,6 @@ public interface ISceneRenderHandler {
 	static ISceneRenderHandler None => NullSceneRenderHandler.Instance;
 
 	void OnRender( SceneNode node, ISpriteBatch spriteBatch );
+
+	void OnUpdate( SceneNode node, double deltaTime );
 }

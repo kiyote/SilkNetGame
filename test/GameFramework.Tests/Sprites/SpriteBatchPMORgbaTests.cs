@@ -1,9 +1,8 @@
-using GameFramework.Sprites;
 using GameFramework.Textures;
 using Silk.NET.OpenGL;
 using Silk.NET.Windowing;
 
-namespace GameFramework.Tests;
+namespace GameFramework.Sprites.Tests;
 
 // End-to-end colour correctness for the sprite pipeline.
 //

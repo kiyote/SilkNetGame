@@ -9,4 +9,6 @@ internal class NullSceneRenderHandler: ISceneRenderHandler {
 	private NullSceneRenderHandler() { }
 
 	public void OnRender( SceneNode node, ISpriteBatch spriteBatch ) { }
+
+	public void OnUpdate( SceneNode node, double deltaTime ) { }
 }

@@ -15,6 +15,32 @@ public sealed class SceneManager : ISceneManager {
 
 	SceneNode ISceneManager.Root => _root;
 
+	void ISceneManager.Reparent(
+		SceneNode node,
+		SceneNode newParent
+	) {
+		ArgumentNullException.ThrowIfNull( node );
+		ArgumentNullException.ThrowIfNull( newParent );
+		node.Reparent( newParent );
+	}
+
+	void ISceneManager.Reorder(
+		SceneNode node,
+		int index
+	) {
+		ArgumentNullException.ThrowIfNull( node );
+		node.Reorder( index );
+	}
+
+	void ISceneManager.ReorderBefore(
+		SceneNode node,
+		SceneNode before
+	) {
+		ArgumentNullException.ThrowIfNull( node );
+		ArgumentNullException.ThrowIfNull( before );
+		node.ReorderBefore( before );
+	}
+
 	bool ISceneManager.MouseDown(
 		Coordinate coordinate,
 		int button
@@ -35,6 +61,22 @@ public sealed class SceneManager : ISceneManager {
 		bool result = WalkMouseMove( _root, coordinate, false );
 		_lastCoordinate = coordinate;
 		return result;
+	}
+
+	void ISceneManager.Update(
+		double deltaTime
+	) {
+		WalkUpdate( _root, deltaTime );
+	}
+
+	private static void WalkUpdate(
+		SceneNode node,
+		double deltaTime
+	) {
+		node.Update( deltaTime );
+		foreach( SceneNode child in node.Children ) {
+			WalkUpdate( child, deltaTime );
+		}
 	}
 
 	void ISceneManager.Render(

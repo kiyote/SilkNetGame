@@ -7,7 +7,12 @@ public interface ISpriteBatch : IDisposable {
 	// and with no texture bound; the texture and blend mode are chosen per-draw (see
 	// the Draw overloads) and the clip is changed via ReplaceClip/RestoreClip.
 	void Start( IRenderTarget renderTarget );
-	void Finish();
+
+	// Ends the batch, flushing any pending sprites. Returns the monotonic count of
+	// GPU flushes (draw calls) performed over this batch's lifetime -- incremented
+	// whenever pending sprites are flushed on a texture change, a clip change, a
+	// capacity overflow, or by this Finish() call itself.
+	long Finish();
 
 	// Pushes a clip onto the clip stack and applies it as the scissor for
 	// subsequent draws, flushing any pending sprites first if the scissor actually
@@ -22,12 +27,6 @@ public interface ISpriteBatch : IDisposable {
 	// would pop below the depth recorded at Start). Outside a batch, restoring an
 	// empty stack is a silent no-op.
 	void RestoreClip();
-
-	// Monotonic count of GPU flushes (draw calls) performed over this batch's
-	// lifetime. Increments whenever pending sprites are flushed -- on a texture
-	// change, a clip change, a capacity overflow, or Finish(). Snapshot it before and
-	// after a body of work and take the difference to measure batch breaks.
-	long FlushCount { get; }
 
 	// Methods that perform actual drawing
 	// -----------------------------------

@@ -6,6 +6,21 @@ public interface ISceneManager {
 
 	SceneNode Root { get; }
 
+	void Reparent(
+		SceneNode node,
+		SceneNode newParent
+	);
+
+	void Reorder(
+		SceneNode node,
+		int index
+	);
+
+	void ReorderBefore(
+		SceneNode node,
+		SceneNode before
+	);
+
 	bool MouseDown(
 		Coordinate coordinate,
 		int button
@@ -22,5 +37,9 @@ public interface ISceneManager {
 
 	void Render(
 		ISpriteBatch spriteBatch
+	);
+
+	void Update(
+		double deltaTime
 	);
 }
