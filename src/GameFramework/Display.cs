@@ -100,8 +100,12 @@ internal sealed class Display : IDisplay {
 		if( _clip is Bounds clip ) {
 			// The display projection has its origin at the top-left, but the
 			// OpenGL scissor box is measured from the bottom-left, so flip Y.
-			int y = _size.Height - ( clip.Y + clip.Height );
-			_stateCache.SetScissor( true, clip.X, y, (uint)clip.Width, (uint)clip.Height );
+			int clipX = clip.X;
+			int clipY = clip.Y;
+			int clipWidth = clip.Width;
+			int clipHeight = clip.Height;
+			int y = _size.Height - ( clipY + clipHeight );
+			_stateCache.SetScissor( true, clipX, y, (uint)clipWidth, (uint)clipHeight );
 		} else {
 			_stateCache.SetScissor( false, 0, 0, 0, 0 );
 		}

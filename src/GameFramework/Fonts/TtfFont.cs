@@ -131,7 +131,7 @@ internal sealed unsafe class TtfFont : IFont {
 		int texHeight = texture.TextureSize.Height;
 
 		int destX = position.X;
-		int destY = position.Y;
+		int destY =position.Y;
 		int srcSkipX = 0;
 		int srcSkipY = 0;
 		int copyWidth = size.Width;

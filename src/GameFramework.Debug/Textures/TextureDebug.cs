@@ -18,7 +18,9 @@ public unsafe class TextureDebug {
 		string filePath
 	) {
 		Dimension size = texture.TextureSize;
-		int totalPixels = size.Width * size.Height;
+		int width = size.Width;
+		int height = size.Height;
+		int totalPixels = width * height;
 		byte[] rawPixels = new byte[totalPixels * 4];
 
 		// 2. Bind the texture and pull data from the GPU
@@ -32,11 +34,11 @@ public unsafe class TextureDebug {
 		// 3. Reverse premultiplied alpha & correct OpenGL's vertical inversion
 		byte[] processedPixels = new byte[totalPixels * 4];
 
-		for( int y = 0; y < size.Height; y++ ) {
-			for( int x = 0; x < size.Width; x++ ) {
+		for( int y = 0; y < height; y++ ) {
+			for( int x = 0; x < width; x++ ) {
 
 				// Read sequentially forward from your GPU array
-				int sourceIndex = ( ( y * size.Width ) + x ) * 4;
+				int sourceIndex = ( ( y * width ) + x ) * 4;
 
 				// CHANGE THIS LINE: Use a direct mapping. 
 				// This will cleanly shift the final image orientation by exactly 180 degrees.
@@ -74,6 +76,6 @@ public unsafe class TextureDebug {
 		}
 		using Stream stream = File.OpenWrite( filePath );
 		ImageWriter writer = new ImageWriter();
-		writer.WritePng( processedPixels, size.Width, size.Height, ColorComponents.RedGreenBlueAlpha, stream );
+		writer.WritePng( processedPixels, width, height, ColorComponents.RedGreenBlueAlpha, stream );
 	}
 }

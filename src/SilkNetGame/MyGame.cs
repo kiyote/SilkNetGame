@@ -33,6 +33,9 @@ internal sealed class MyGame : GameBase, IKeyHandler {
 	private readonly ITweeningEngine _tween;
 	private readonly TweenHandle _colourTween;
 
+	private readonly ITexture _ui;
+	private readonly INinePatch _panel;
+
 	public MyGame(
 		IDevice device,
 		IDisplay display,
@@ -61,8 +64,11 @@ internal sealed class MyGame : GameBase, IKeyHandler {
 		_scaledHeight = scaledHeight * ScaleFactor;
 		_surface = device.CreateRenderTexture( new Dimension( scaledWidth, scaledHeight ), TextureFilter.Nearest );
 
+
 		_textureManager = textureManager;
 		_terrain = _textureManager.Load( "terrain", "terrain.png", true, TextureFilter.Nearest );
+		_ui = _textureManager.Load( "ui", "ui.png", true, TextureFilter.Nearest );
+		_panel = _ui.CreateNinePatch( "panel", new Coordinate( 190, 0 ), new Dimension( 100, 100 ), 8, 8, 8, 8 );
 
 		_source = _device.CreateTextureAtlas( new Dimension( 1024, 1024 ), TextureFilter.Nearest );
 		_source.Create( "tall_grass", _terrain, new Coordinate( 384, 256 ), new Dimension( 96, 96 ) );
@@ -103,7 +109,8 @@ internal sealed class MyGame : GameBase, IKeyHandler {
 		_spriteBatch.Start( _surface );
 		_sceneManager.Render( _spriteBatch );
 		_tween.TryGetCurrentValue( _colourTween, out float colourDistance );
-		_spriteBatch.Draw( 300, 250, _rotationLabel, _rotation, Lerp.Colour( 0xFFFFFFFFu, 0xFF0000FFu, colourDistance ) );
+		_spriteBatch.Draw( _panel, 290, 240, 330, 295 );
+		_spriteBatch.Draw( _rotationLabel, 300, 250, _rotation, Lerp.Colour( 0xFFFFFFFFu, 0xFF0000FFu, colourDistance ) );
 		_spriteBatch.Finish();
 
 		// Copy the final surface to the display, scaling it up by the ScaleFactor
@@ -145,6 +152,7 @@ internal sealed class MyGame : GameBase, IKeyHandler {
 		_textSource.Dispose();
 		_surface.Dispose();
 		_terrain.Dispose();
+		_ui.Dispose();
 		_font.Dispose();
 	}
 }
