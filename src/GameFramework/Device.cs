@@ -174,6 +174,7 @@ internal sealed class Device : IDevice {
 		serviceCollection.AddSingleton<IDevice>( this );
 		serviceCollection.AddSingleton<ISpriteBatch, SpriteBatchPMO>();
 		serviceCollection.AddSingleton<Keyboard>();
+		serviceCollection.AddSingleton<Mouse>();
 		serviceCollection.AddSingleton<ITextureManager, TextureManager>();
 		serviceCollection.AddTweeningEngine();
 		_configureServices?.Invoke( serviceCollection );
