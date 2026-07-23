@@ -30,7 +30,6 @@ internal sealed class SubTextureTests {
 		public void Copy( Coordinate position, ITexture source, Coordinate sourcePosition, Dimension sourceSize ) => throw new NotSupportedException();
 		public ITextureAtlas CreateAtlas() => throw new NotSupportedException();
 		public ISubTexture CreateSubTexture( string name, Coordinate position, Dimension size ) => throw new NotSupportedException();
-		public INinePatch CreateNinePatch( string name, Coordinate position, Dimension size, int leftBorder, int rightBorder, int topBorder, int bottomBorder ) => throw new NotSupportedException();
 		public void Bind( int textureUnit = 0 ) => throw new NotSupportedException();
 		public void Update( Coordinate position, Dimension size ) => throw new NotSupportedException();
 		public bool Equals( ISubTexture? other ) => ReferenceEquals( this, other );

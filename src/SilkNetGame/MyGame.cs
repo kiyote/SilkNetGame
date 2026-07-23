@@ -28,6 +28,7 @@ internal sealed class MyGame : GameBase, IKeyHandler, IMouseHandler {
 	private readonly ISceneManager _sceneManager;
 
 	private readonly ITexture _ui;
+	private readonly ITextureAtlas _uiAtlas;
 	private readonly INinePatch _panel;
 	private readonly INinePatch _buttonUp;
 	private readonly INinePatch _buttonDown;
@@ -70,9 +71,10 @@ internal sealed class MyGame : GameBase, IKeyHandler, IMouseHandler {
 		_terrain = _textureManager.Load( "terrain", "terrain.png", true, TextureFilter.Nearest );
 
 		_ui = _textureManager.Load( "ui", "ui.png", true, TextureFilter.Nearest );
-		_panel = _ui.CreateNinePatch( "panel", new Coordinate( 190, 0 ), new Dimension( 100, 100 ), 8, 8, 8, 8 );
-		_buttonDown = _ui.CreateNinePatch( "button_down", new Coordinate( 0, 143 ), new Dimension( 190, 45 ), 8, 8, 8, 8 );
-		_buttonUp = _ui.CreateNinePatch( "button_up", new Coordinate( 0, 188 ), new Dimension( 190, 49 ), 8, 8, 8, 11 );
+		_uiAtlas = _device.CreateTextureAtlas( new Dimension( 1024, 1024 ), TextureFilter.Nearest );
+		_panel = _uiAtlas.Create( "panel", _ui, new Coordinate( 190, 0 ), new Dimension( 100, 100 ), 8, 8, 8, 8 );
+		_buttonDown = _uiAtlas.Create( "button_down", _ui, new Coordinate( 0, 143 ), new Dimension( 190, 45 ), 8, 8, 8, 8 );
+		_buttonUp = _uiAtlas.Create( "button_up", _ui, new Coordinate( 0, 188 ), new Dimension( 190, 49 ), 8, 8, 8, 11 );
 
 		_source = _device.CreateTextureAtlas( new Dimension( 1024, 1024 ), TextureFilter.Nearest );
 		_source.Create( "tall_grass", _terrain, new Coordinate( 384, 256 ), new Dimension( 96, 96 ) );
@@ -136,7 +138,7 @@ internal sealed class MyGame : GameBase, IKeyHandler, IMouseHandler {
 
 		_spriteBatch.Start( _surface );
 		_sceneManager.Render( _spriteBatch );
-		_spriteBatch.Draw( _textAtlas["mouse_position"], 0, 0 );
+		_spriteBatch.Draw( _textAtlas.SubTexture( "mouse_position" ), 0, 0 );
 		_spriteBatch.Finish();
 
 		// Copy the final surface to the display, scaling it up by the ScaleFactor
@@ -156,6 +158,7 @@ internal sealed class MyGame : GameBase, IKeyHandler, IMouseHandler {
 	public override void Dispose() {
 		_textAtlas.Dispose();
 		_source.Dispose();
+		_uiAtlas.Dispose();
 		_surface.Dispose();
 		_terrain.Dispose();
 		_ui.Dispose();

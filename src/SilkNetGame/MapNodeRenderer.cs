@@ -31,7 +31,7 @@ internal sealed class MapNodeRenderer : ISceneRenderHandler {
 		_tween.TryGetCurrentValue( _handle, out float interval );
 		_tween.TryGetCurrentValue( _alpha, out float alpha );
 		int offset = (int)(( MathF.Cos( interval ) + 1.0f ) * 0.5f * 100.0f);
-		spriteBatch.Draw( _terrainAtlas["tall_grass"], node.Clip.Position.Add( offset, offset ), node.Clip.Size, Lerp.Colour( 0xFFFFFFFFu, 0xFFFFFF00u, alpha ) );
+		spriteBatch.Draw( _terrainAtlas.SubTexture( "tall_grass" ), node.Clip.Position.Add( offset, offset ), node.Clip.Size, Lerp.Colour( 0xFFFFFFFFu, 0xFFFFFF00u, alpha ) );
 	}
 
 	public void OnUpdate(

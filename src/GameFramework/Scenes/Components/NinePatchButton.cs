@@ -39,9 +39,9 @@ public sealed class NinePatchButton : ISceneMouseHandler, ISceneRenderHandler {
 		if ( _pressed ) {
 			Coordinate pressedCoordinate = node.Clip.Position.Add( 0, _pressHeight );
 			Dimension pressedSize = node.Clip.Size.Subtract( 0, _pressHeight );
-			spriteBatch.Draw( _down, pressedCoordinate, pressedSize, _colour );
+			_down.Draw( spriteBatch, pressedCoordinate, pressedSize, _colour );
 		} else {
-			spriteBatch.Draw( _up, node.Clip.Position, node.Clip.Size, _colour );
+			_up.Draw( spriteBatch, node.Clip.Position, node.Clip.Size, _colour );
 		}
 	}
 

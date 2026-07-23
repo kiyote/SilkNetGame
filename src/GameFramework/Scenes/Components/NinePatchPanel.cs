@@ -17,7 +17,7 @@ public sealed class NinePatchPanel : ISceneRenderHandler {
 		SceneNode node,
 		ISpriteBatch spriteBatch
 	) {
-		spriteBatch.Draw( _panel, node.Clip.Position, node.Clip.Size );
+		_panel.Draw( spriteBatch, node.Clip.Position, node.Clip.Size );
 	}
 
 	void ISceneRenderHandler.OnUpdate(
