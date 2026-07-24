@@ -3,9 +3,10 @@ using GameFramework.Fonts;
 namespace GameFramework.Textures;
 
 public interface ITextureAtlas : IDisposable {
-	ISubTexture Create( string id, IFont font, ReadOnlySpan<byte> text, uint colour = uint.MaxValue );
-	ISubTexture Create( string id, IFont font, string text, uint colour = uint.MaxValue );
-	ISubTexture Create( string id, IFont font, ReadOnlySpan<byte> text, uint textColour = uint.MaxValue, uint outlineColour = 255, int outlineWidth = 1 );
+	ISubTexture Create( string id, IFont font, ReadOnlySpan<byte> text, uint colour = 0xFFFFFFFFu );
+	ISubTexture Create( string id, IFont font, string text, uint colour = 0xFFFFFFFFu );
+	ISubTexture Create( string id, IFont font, ReadOnlySpan<byte> text, uint textColour = 0xFFFFFFFFu, uint outlineColour = 0x000000FFu, int outlineWidth = 1 );
+	ISubTexture Create( string id, IFont font, string text, uint textColour = 0xFFFFFFFFu, uint outlineColour = 0x000000FFu, int outlineWidth = 1 );
 	ISubTexture Create( string id, ITexture source, Coordinate sourcePosition, Dimension sourceSize );
 
 	// Creates a nine-patch named 'id' by slicing nine regions out of 'source'
@@ -14,10 +15,10 @@ public interface ITextureAtlas : IDisposable {
 	// sprite batch.
 	INinePatch Create( string id, ITexture source, Coordinate sourcePosition, Dimension sourceSize, int leftBorder, int rightBorder, int topBorder, int bottomBorder );
 
-	void Update( string id, IFont font, ReadOnlySpan<byte> text, uint colour = uint.MaxValue );
-	void Update( string id, IFont font, string text, uint colour = uint.MaxValue );
-	void Update( string id, IFont font, ReadOnlySpan<byte> text, uint textColour = uint.MaxValue, uint outlineColour = 255, int outlineWidth = 1 );
-	void Update( string id, IFont font, string text, uint textColour = uint.MaxValue, uint outlineColour = 255, int outlineWidth = 1 );
+	void Update( string id, IFont font, ReadOnlySpan<byte> text, uint colour = 0xFFFFFFFFu );
+	void Update( string id, IFont font, string text, uint colour = 0xFFFFFFFFu );
+	void Update( string id, IFont font, ReadOnlySpan<byte> text, uint textColour = 0xFFFFFFFFu, uint outlineColour = 0x000000FFu, int outlineWidth = 1 );
+	void Update( string id, IFont font, string text, uint textColour = 0xFFFFFFFFu, uint outlineColour = 0x000000FFu, int outlineWidth = 1 );
 	void Update( string id, ITexture source, Coordinate sourcePosition, Dimension sourceSize );
 
 	ITexture Texture { get; }

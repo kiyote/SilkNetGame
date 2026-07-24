@@ -6,6 +6,10 @@ public record struct Coordinate( int X, int Y ) {
 		return new Coordinate( X - other.X, Y - other.Y );
 	}
 
+	public readonly Coordinate Add( in Coordinate other ) {
+		return new Coordinate( X + other.X, Y + other.Y );
+	}
+
 	public readonly Coordinate Subtract( int x, int y ) {
 		return new Coordinate( X - x, Y - y );
 	}

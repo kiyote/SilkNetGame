@@ -7,6 +7,7 @@ public sealed class Mouse : IDisposable {
 
 	private readonly IInputContext _context;
 	private readonly List<IMouseHandler> _handlers = [];
+	private bool _suspended;
 
 	public Mouse(
 		IInputContext context
@@ -31,7 +32,9 @@ public sealed class Mouse : IDisposable {
 	) {
 		Coordinate position = new Coordinate( (int)mouse.Position.X, (int)mouse.Position.Y );
 		foreach( IMouseHandler handler in _handlers ) {
-			if( handler.MouseDown( position, (int)button ) ) {
+			if( _suspended
+				|| handler.MouseDown( position, (int)button )
+			) {
 				break;
 			}
 		}
@@ -43,7 +46,9 @@ public sealed class Mouse : IDisposable {
 	) {
 		Coordinate position = new Coordinate( (int)mouse.Position.X, (int)mouse.Position.Y );
 		foreach( IMouseHandler handler in _handlers ) {
-			if( handler.MouseUp( position, (int)button ) ) {
+			if( _suspended
+				|| handler.MouseUp( position, (int)button )
+			) {
 				break;
 			}
 		}
@@ -55,7 +60,9 @@ public sealed class Mouse : IDisposable {
 	) {
 		Coordinate position = new Coordinate( (int)vector.X, (int)vector.Y );
 		foreach( IMouseHandler handler in _handlers ) {
-			if( handler.MouseMove( position ) ) {
+			if( _suspended
+				|| handler.MouseMove( position )
+			) {
 				break;
 			}
 		}
@@ -63,5 +70,13 @@ public sealed class Mouse : IDisposable {
 
 	public void Dispose() {
 		_handlers.Clear();
+	}
+
+	public void Suspend() {
+		_suspended = true;
+	}
+
+	public void Resume() {
+		_suspended = false;
 	}
 }

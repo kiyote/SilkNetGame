@@ -75,17 +75,19 @@ internal sealed class TextureAtlas : ITextureAtlas {
 		string bottomCenterId = $"{id}_BottomCenter";
 		string bottomRightId = $"{id}_BottomRight";
 
-		_ = Create( topLeftId, source, new Coordinate( x0, y0 ), new Dimension( leftBorder, topBorder ) );
-		_ = Create( topCenterId, source, new Coordinate( x1, y0 ), new Dimension( centerWidth, topBorder ) );
-		_ = Create( topRightId, source, new Coordinate( x2, y0 ), new Dimension( rightBorder, topBorder ) );
+		ITextureAtlas @this = this;
 
-		_ = Create( middleLeftId, source, new Coordinate( x0, y1 ), new Dimension( leftBorder, middleHeight ) );
-		_ = Create( middleCenterId, source, new Coordinate( x1, y1 ), new Dimension( centerWidth, middleHeight ) );
-		_ = Create( middleRightId, source, new Coordinate( x2, y1 ), new Dimension( rightBorder, middleHeight ) );
+		@this.Create( topLeftId, source, new Coordinate( x0, y0 ), new Dimension( leftBorder, topBorder ) );
+		@this.Create( topCenterId, source, new Coordinate( x1, y0 ), new Dimension( centerWidth, topBorder ) );
+		@this.Create( topRightId, source, new Coordinate( x2, y0 ), new Dimension( rightBorder, topBorder ) );
 
-		_ = Create( bottomLeftId, source, new Coordinate( x0, y2 ), new Dimension( leftBorder, bottomBorder ) );
-		_ = Create( bottomCenterId, source, new Coordinate( x1, y2 ), new Dimension( centerWidth, bottomBorder ) );
-		_ = Create( bottomRightId, source, new Coordinate( x2, y2 ), new Dimension( rightBorder, bottomBorder ) );
+		@this.Create( middleLeftId, source, new Coordinate( x0, y1 ), new Dimension( leftBorder, middleHeight ) );
+		@this.Create( middleCenterId, source, new Coordinate( x1, y1 ), new Dimension( centerWidth, middleHeight ) );
+		@this.Create( middleRightId, source, new Coordinate( x2, y1 ), new Dimension( rightBorder, middleHeight ) );
+
+		@this.Create( bottomLeftId, source, new Coordinate( x0, y2 ), new Dimension( leftBorder, bottomBorder ) );
+		@this.Create( bottomCenterId, source, new Coordinate( x1, y2 ), new Dimension( centerWidth, bottomBorder ) );
+		@this.Create( bottomRightId, source, new Coordinate( x2, y2 ), new Dimension( rightBorder, bottomBorder ) );
 
 		NinePatch ninePatch = new NinePatch(
 			id,
@@ -105,11 +107,11 @@ internal sealed class TextureAtlas : ITextureAtlas {
 		return ninePatch;
 	}
 
-	public ISubTexture Create(
+	ISubTexture ITextureAtlas.Create(
 		string id,
 		IFont font,
 		ReadOnlySpan<byte> text,
-		uint colour = uint.MaxValue
+		uint colour
 	) {
 		ArgumentNullException.ThrowIfNull( id );
 		ArgumentNullException.ThrowIfNull( font );
@@ -122,11 +124,11 @@ internal sealed class TextureAtlas : ITextureAtlas {
 		return subTexture;
 	}
 
-	public ISubTexture Create(
+	ISubTexture ITextureAtlas.Create(
 		string id,
 		IFont font,
 		string text,
-		uint colour = uint.MaxValue
+		uint colour
 	) {
 		ArgumentNullException.ThrowIfNull( id );
 		ArgumentNullException.ThrowIfNull( font );
@@ -139,13 +141,13 @@ internal sealed class TextureAtlas : ITextureAtlas {
 		return subTexture;
 	}
 
-	public ISubTexture Create(
+	ISubTexture ITextureAtlas.Create(
 		string id,
 		IFont font,
 		ReadOnlySpan<byte> text,
-		uint textColour = uint.MaxValue,
-		uint outlineColour = 255,
-		int outlineWidth = 1
+		uint textColour,
+		uint outlineColour,
+		int outlineWidth
 	) {
 		ArgumentNullException.ThrowIfNull( id );
 		ArgumentNullException.ThrowIfNull( font );
@@ -158,13 +160,13 @@ internal sealed class TextureAtlas : ITextureAtlas {
 		return subTexture;
 	}
 
-	public ISubTexture Create(
+	ISubTexture ITextureAtlas.Create(
 		string id,
 		IFont font,
 		string text,
-		uint textColour = uint.MaxValue,
-		uint outlineColour = 255,
-		int outlineWidth = 1
+		uint textColour,
+		uint outlineColour,
+		int outlineWidth
 	) {
 		ArgumentNullException.ThrowIfNull( id );
 		ArgumentNullException.ThrowIfNull( font );
@@ -177,7 +179,7 @@ internal sealed class TextureAtlas : ITextureAtlas {
 		return subTexture;
 	}
 
-	public ISubTexture Create(
+	ISubTexture ITextureAtlas.Create(
 		string id,
 		ITexture source,
 		Coordinate sourcePosition,
@@ -192,11 +194,11 @@ internal sealed class TextureAtlas : ITextureAtlas {
 		return subTexture;
 	}
 
-	public void Update(
+	void ITextureAtlas.Update(
 		string id,
 		IFont font,
 		ReadOnlySpan<byte> text,
-		uint colour = uint.MaxValue
+		uint colour
 	) {
 		Dimension size = font.MeasureText( text, 0 );
 		SubTexture subTexture = _registry[id];
@@ -205,11 +207,11 @@ internal sealed class TextureAtlas : ITextureAtlas {
 		ExtrudeGutter( subTexture );
 	}
 
-	public void Update(
+	void ITextureAtlas.Update(
 		string id,
 		IFont font,
 		string text,
-		uint colour = uint.MaxValue
+		uint colour
 	) {
 		Dimension size = font.MeasureText( text, 0 );
 		SubTexture subTexture = _registry[id];
@@ -218,13 +220,13 @@ internal sealed class TextureAtlas : ITextureAtlas {
 		ExtrudeGutter( subTexture );
 	}
 
-	public void Update(
+	void ITextureAtlas.Update(
 		string id,
 		IFont font,
 		ReadOnlySpan<byte> text,
-		uint textColour = uint.MaxValue,
-		uint outlineColour = 255,
-		int outlineWidth = 1
+		uint textColour,
+		uint outlineColour,
+		int outlineWidth
 	) {
 		Dimension size = font.MeasureText( text, outlineWidth );
 		SubTexture subTexture = _registry[id];
@@ -233,13 +235,13 @@ internal sealed class TextureAtlas : ITextureAtlas {
 		ExtrudeGutter( subTexture );
 	}
 
-	public void Update(
+	void ITextureAtlas.Update(
 		string id,
 		IFont font,
 		string text,
-		uint textColour = uint.MaxValue,
-		uint outlineColour = 255,
-		int outlineWidth = 1
+		uint textColour ,
+		uint outlineColour,
+		int outlineWidth
 	) {
 		Dimension size = font.MeasureText( text, outlineWidth );
 		SubTexture subTexture = _registry[id];
@@ -248,7 +250,7 @@ internal sealed class TextureAtlas : ITextureAtlas {
 		ExtrudeGutter( subTexture );
 	}
 
-	public void Update(
+	void ITextureAtlas.Update(
 		string id,
 		ITexture source,
 		Coordinate sourcePosition,
@@ -260,7 +262,7 @@ internal sealed class TextureAtlas : ITextureAtlas {
 		ExtrudeGutter( subTexture );
 	}
 
-	public void Dispose() {
+	void IDisposable.Dispose() {
 		if( !_isDisposed ) {
 			_isDisposed = true;
 			_registry.Clear();

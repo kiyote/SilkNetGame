@@ -6,6 +6,7 @@ public sealed class Keyboard: IDisposable {
 
 	private readonly IInputContext _context;
 	private readonly List<IKeyHandler> _handlers = [];
+	private bool _suspended;
 
 	public Keyboard(
 		IInputContext context
@@ -29,7 +30,9 @@ public sealed class Keyboard: IDisposable {
 		int scancode
 	) {
 		foreach( IKeyHandler handler in _handlers ) {
-			if( handler.KeyDown( key ) ) {
+			if( _suspended
+				|| handler.KeyDown( key )
+			) {
 				break;
 			}
 		}
@@ -41,7 +44,9 @@ public sealed class Keyboard: IDisposable {
 		int scancode
 	) {
 		foreach( IKeyHandler handler in _handlers ) {
-			if( handler.KeyUp( key ) ) {
+			if( _suspended
+				|| handler.KeyUp( key )
+			) {
 				break;
 			}
 		}
@@ -49,5 +54,13 @@ public sealed class Keyboard: IDisposable {
 
 	public void Dispose() {
 		_handlers.Clear();
+	}
+
+	public void Suspend() {
+		_suspended = true;
+	}
+
+	public void Resume() {
+		_suspended = false;
 	}
 }

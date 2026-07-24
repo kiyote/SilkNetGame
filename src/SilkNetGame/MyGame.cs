@@ -10,6 +10,8 @@ namespace SilkNetGame;
 
 internal sealed class MyGame : GameBase, IKeyHandler, IMouseHandler {
 
+	private static readonly Action NoAction = () => { };
+
 	private const float ScaleFactor = 2.0f;
 	private readonly IDevice _device;
 	private readonly IDisplay _display;
@@ -29,11 +31,10 @@ internal sealed class MyGame : GameBase, IKeyHandler, IMouseHandler {
 
 	private readonly ITexture _ui;
 	private readonly ITextureAtlas _uiAtlas;
-	private readonly INinePatch _panel;
-	private readonly INinePatch _buttonUp;
-	private readonly INinePatch _buttonDown;
-
 	private readonly ITextureAtlas _textAtlas;
+
+	private readonly Keyboard _keyboard;
+	private readonly Mouse _mouse;
 
 	private Coordinate _mousePosition;
 
@@ -49,6 +50,8 @@ internal sealed class MyGame : GameBase, IKeyHandler, IMouseHandler {
 		_device = device;
 		_display = display;
 		_spriteBatch = spriteBatch;
+		_keyboard = keyboard;
+		_mouse = mouse;
 		_textureDebug = textureDebug;
 		_sceneManager = new SceneManager( _display.Size );
 
@@ -72,15 +75,20 @@ internal sealed class MyGame : GameBase, IKeyHandler, IMouseHandler {
 
 		_ui = _textureManager.Load( "ui", "ui.png", true, TextureFilter.Nearest );
 		_uiAtlas = _device.CreateTextureAtlas( new Dimension( 1024, 1024 ), TextureFilter.Nearest );
-		_panel = _uiAtlas.Create( "panel", _ui, new Coordinate( 190, 0 ), new Dimension( 100, 100 ), 8, 8, 8, 8 );
-		_buttonDown = _uiAtlas.Create( "button_down", _ui, new Coordinate( 0, 143 ), new Dimension( 190, 45 ), 8, 8, 8, 8 );
-		_buttonUp = _uiAtlas.Create( "button_up", _ui, new Coordinate( 0, 188 ), new Dimension( 190, 49 ), 8, 8, 8, 11 );
+		_uiAtlas.Create( "panel", _ui, new Coordinate( 190, 0 ), new Dimension( 100, 100 ), 8, 8, 8, 8 );
+		_uiAtlas.Create( "button_down", _ui, new Coordinate( 0, 143 ), new Dimension( 190, 45 ), 8, 8, 8, 8 );
+		_uiAtlas.Create( "button_up", _ui, new Coordinate( 0, 188 ), new Dimension( 190, 49 ), 8, 8, 8, 11 );
 
 		_source = _device.CreateTextureAtlas( new Dimension( 1024, 1024 ), TextureFilter.Nearest );
 		_source.Create( "tall_grass", _terrain, new Coordinate( 384, 256 ), new Dimension( 96, 96 ) );
 
-		SceneNode panelNode = _sceneManager.Root.AddPanel( new Coordinate( 128, 128 ), new Dimension( 96 * 2, 96 * 2 ), _panel );
-		panelNode.AddButton( new Coordinate( 10, 10 ), new Dimension( 86 * 2, 48 ), _buttonUp, _buttonDown, 3, 0xFFFFFFFFu, 0x00FF00FFu );
+		SceneNode panelNode = _sceneManager.Root.AddPanel( new Coordinate( 128, 128 ), new Dimension( 96 * 2, 96 * 2 ), _uiAtlas, "panel", true );
+		panelNode.AddLabelButton( NoAction, new Coordinate( 10, 15 ), new Dimension( 86 * 2, 24 ), _uiAtlas, "button_up", "button_down", _font, "Start Game", 3, 0xFFFFFFFFu, 0x00FF00FFu, 0xFFFFFFFFu, 0x000000FFu, 1 );
+		panelNode.AddLabelButton( QuitClicked, new Coordinate( 10, 150 ), new Dimension( 86 * 2, 24 ), _uiAtlas, "button_up", "button_down", _font, "Quit to Desktop", 3, 0xFFFFFFFFu, 0x00FF00FFu, 0xFFFFFFFFu, 0x000000FFu, 1 );
+	}
+
+	private void QuitClicked() {
+		Exit();
 	}
 
 	public bool KeyDown(
@@ -93,8 +101,7 @@ internal sealed class MyGame : GameBase, IKeyHandler, IMouseHandler {
 		Key key
 	) {
 		if( key == Key.Escape ) {
-			_textureDebug.Write( _source.Texture, "surface.png" );
-			_device.Terminate();
+			Exit();
 			return true;
 		}
 		return true;
@@ -125,7 +132,7 @@ internal sealed class MyGame : GameBase, IKeyHandler, IMouseHandler {
 		if( scaled != _mousePosition) {
 			_mousePosition = scaled;
 			string text = $"{scaled.X},{scaled.Y}";
-			_textAtlas.Update( "mouse_position", _font, text, 0xFFFFFFFFu, 0x00000000u, 1 );
+			_textAtlas.Update( "mouse_position", _font, text, 0xFFFFFFFFu, 0x000000FFu, 1 );
 		}
 		_sceneManager.MouseMove( scaled );
 		return true;
@@ -156,6 +163,8 @@ internal sealed class MyGame : GameBase, IKeyHandler, IMouseHandler {
 	}
 
 	public override void Dispose() {
+		_keyboard.Suspend();
+		_mouse.Suspend();
 		_textAtlas.Dispose();
 		_source.Dispose();
 		_uiAtlas.Dispose();
@@ -163,5 +172,13 @@ internal sealed class MyGame : GameBase, IKeyHandler, IMouseHandler {
 		_terrain.Dispose();
 		_ui.Dispose();
 		_font.Dispose();
+		_keyboard.Dispose();
+		_mouse.Dispose();
+	}
+
+	private void Exit() {
+		_textureDebug.Write( _source.Texture, "surface.png" );
+		_textureDebug.Write( _uiAtlas.Texture, "ui_atlas.png" );
+		_device.Terminate();
 	}
 }

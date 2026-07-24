@@ -39,7 +39,7 @@ internal sealed class TtfFontTests {
 
 	[Test]
 	public void MeasureText_NonEmptyString_ReturnsPositiveDimension() {
-		using TtfFont font = new TtfFont( _gl, _stateCache, "Roboto-Regular.ttf", 16 );
+		using IFont font = new TtfFont( _gl, _stateCache, "Roboto-Regular.ttf", 16 );
 
 		Dimension size = font.MeasureText( "Hello", 0 );
 
@@ -51,7 +51,7 @@ internal sealed class TtfFontTests {
 
 	[Test]
 	public void MeasureText_LongerStringWiderThanShorter() {
-		using TtfFont font = new TtfFont( _gl, _stateCache, "Roboto-Regular.ttf", 16 );
+		using IFont font = new TtfFont( _gl, _stateCache, "Roboto-Regular.ttf", 16 );
 
 		Dimension shortText = font.MeasureText( "i", 0 );
 		Dimension longText = font.MeasureText( "iiiiiiiiii", 0 );
@@ -61,10 +61,10 @@ internal sealed class TtfFontTests {
 
 	[Test]
 	public void MeasureText_EmptyString_ReturnsZeroWidth() {
-		using TtfFont font = new TtfFont( _gl, _stateCache, "Roboto-Regular.ttf", 16 );
+		using IFont font = new TtfFont( _gl, _stateCache, "Roboto-Regular.ttf", 16 );
 
 		Dimension size = font.MeasureText( "", 0 );
 
-		Assert.That( size.Width, Is.EqualTo( 0 ) );
+		Assert.That( size.Width, Is.Zero );
 	}
 }
